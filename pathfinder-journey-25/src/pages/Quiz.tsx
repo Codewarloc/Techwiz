@@ -106,15 +106,26 @@ const Quiz = () => {
     return { scores, bestCategory };
   };
 
-  // ✅ Updated handleSubmit to POST results
+  // ✅ Submit quiz results to backend
   const handleSubmit = async () => {
     const { scores, bestCategory } = calculateResults();
 
     try {
-      await axios.post("http://127.0.0.1:8000/api/quizresults/", {
-        scores: scores,
-        best_category: bestCategory,
-      });
+      // 🔑 Get token from localStorage (assuming you stored it after login)
+      const token = localStorage.getItem("access");
+
+      await axios.post(
+        "http://127.0.0.1:8000/api/quizresults/",
+        {
+          scores: scores,
+          best_category: bestCategory,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // ✅ pass token for authentication
+          },
+        }
+      );
 
       console.log("Quiz result submitted successfully");
     } catch (err) {
@@ -124,160 +135,157 @@ const Quiz = () => {
     setShowResults(true);
   };
 
+  // ✅ Results Page
   if (showResults) {
     const { scores, bestCategory } = calculateResults();
 
     return (
-      <>
-       
-        <div className="min-h-screen bg-background">
-          <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="max-w-3xl mx-auto text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-primary to-secondary rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Award className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold mb-4">Your Results</h1>
-              <p className="text-muted-foreground mb-6">
-                Based on your answers, your strongest career path is:
-              </p>
-              <h2 className="text-2xl font-bold text-gradient mb-6">{bestCategory}</h2>
+      <div className="min-h-screen bg-background">
+        <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="w-16 h-16 bg-gradient-to-r from-primary to-secondary rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Award className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold mb-4">Your Results</h1>
+            <p className="text-muted-foreground mb-6">
+              Based on your answers, your strongest career path is:
+            </p>
+            <h2 className="text-2xl font-bold text-gradient mb-6">{bestCategory}</h2>
 
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold mb-4 flex items-center justify-center">
-                  <Briefcase className="w-5 h-5 mr-2 text-primary" /> Suggested Careers
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {careerSuggestions[bestCategory].map((career, idx) => (
-                    <div
-                      key={idx}
-                      className="p-4 border border-border rounded-lg bg-card hover:bg-muted/50 transition-colors"
-                    >
-                      {career}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4 text-left">
-                {Object.entries(scores).map(([category, score]) => (
-                  <div key={category}>
-                    <div className="flex justify-between mb-1">
-                      <span className="font-medium">{category}</span>
-                      <span>{score}</span>
-                    </div>
-                    <Progress value={(score / questions.length) * 100} className="h-2" />
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold mb-4 flex items-center justify-center">
+                <Briefcase className="w-5 h-5 mr-2 text-primary" /> Suggested Careers
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {careerSuggestions[bestCategory].map((career, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 border border-border rounded-lg bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    {career}
                   </div>
                 ))}
               </div>
-
-              <Button className="mt-8" onClick={() => window.location.reload()}>
-                Retake Quiz
-              </Button>
-            </div>
-          </main>
-        </div>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <div className="min-h-screen bg-background">
-        <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="max-w-2xl mx-auto">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-r from-primary to-secondary rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Brain className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold mb-2">Career Assessment Quiz</h1>
-              <p className="text-muted-foreground">
-                Discover careers that match your interests and personality
-              </p>
             </div>
 
-            {/* Progress */}
-            <div className="mb-8">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium">Progress</span>
-                <span className="text-sm text-muted-foreground">
-                  {currentQuestion + 1} of {questions.length}
-                </span>
-              </div>
-              <Progress value={progress} className="h-2" />
+            <div className="space-y-4 text-left">
+              {Object.entries(scores).map(([category, score]) => (
+                <div key={category}>
+                  <div className="flex justify-between mb-1">
+                    <span className="font-medium">{category}</span>
+                    <span>{score}</span>
+                  </div>
+                  <Progress value={(score / questions.length) * 100} className="h-2" />
+                </div>
+              ))}
             </div>
 
-            {/* Question Card */}
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle className="text-xl">
-                  Question {currentQuestion + 1}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <h3 className="text-lg font-semibold mb-6">
-                  {questions[currentQuestion].question}
-                </h3>
-
-                <RadioGroup
-                  value={answers[currentQuestion] || ""}
-                  onValueChange={handleAnswerChange}
-                  className="space-y-4"
-                >
-                  {questions[currentQuestion].options.map((option, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center space-x-2 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <RadioGroupItem value={option.text} id={`option-${index}`} />
-                      <Label
-                        htmlFor={`option-${index}`}
-                        className="flex-1 cursor-pointer font-medium"
-                      >
-                        {option.text}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </CardContent>
-            </Card>
-
-            {/* Navigation */}
-            <div className="flex justify-between">
-              <Button
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentQuestion === 0}
-                className="flex items-center"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Previous
-              </Button>
-
-              {currentQuestion === questions.length - 1 ? (
-                <Button
-                  className="btn-hero flex items-center"
-                  disabled={!answers[currentQuestion]}
-                  onClick={handleSubmit}
-                >
-                  Get Results
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleNext}
-                  disabled={!answers[currentQuestion]}
-                  className="flex items-center"
-                >
-                  Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              )}
-            </div>
+            <Button className="mt-8" onClick={() => window.location.reload()}>
+              Retake Quiz
+            </Button>
           </div>
         </main>
       </div>
-    </>
+    );
+  }
+
+  // ✅ Quiz Page
+  return (
+    <div className="min-h-screen bg-background">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-r from-primary to-secondary rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Brain className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold mb-2">Career Assessment Quiz</h1>
+            <p className="text-muted-foreground">
+              Discover careers that match your interests and personality
+            </p>
+          </div>
+
+          {/* Progress */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium">Progress</span>
+              <span className="text-sm text-muted-foreground">
+                {currentQuestion + 1} of {questions.length}
+              </span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+
+          {/* Question Card */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-xl">
+                Question {currentQuestion + 1}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <h3 className="text-lg font-semibold mb-6">
+                {questions[currentQuestion].question}
+              </h3>
+
+              <RadioGroup
+                value={answers[currentQuestion] || ""}
+                onValueChange={handleAnswerChange}
+                className="space-y-4"
+              >
+                {questions[currentQuestion].options.map((option, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center space-x-2 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <RadioGroupItem value={option.text} id={`option-${index}`} />
+                    <Label
+                      htmlFor={`option-${index}`}
+                      className="flex-1 cursor-pointer font-medium"
+                    >
+                      {option.text}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </CardContent>
+          </Card>
+
+          {/* Navigation */}
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentQuestion === 0}
+              className="flex items-center"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Previous
+            </Button>
+
+            {currentQuestion === questions.length - 1 ? (
+              <Button
+                className="btn-hero flex items-center"
+                disabled={!answers[currentQuestion]}
+                onClick={handleSubmit}
+              >
+                Get Results
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleNext}
+                disabled={!answers[currentQuestion]}
+                className="flex items-center"
+              >
+                Next
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
   );
 };
 

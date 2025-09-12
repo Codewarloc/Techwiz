@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os # Add this import at the top of the file
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,6 +31,23 @@ ALLOWED_HOSTS = [
     'localhost',
 ]
 
+
+# For development, email will be printed to the console.
+# For production, configure a real email backend (e.g., SMTP).
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@pathseeker.com'
+
+# --- PRODUCTION EMAIL SETTINGS (Example for Gmail) ---
+# IMPORTANT: For security, use environment variables instead of hardcoding credentials.
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_USER') # Your Gmail address
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_APP_PASSWORD') # The 16-character App Password you generated
+
+# URL of your React frontend
+FRONTEND_URL = "http://localhost:5173" # Adjust if your port is different
 
 # Application definition
 
@@ -61,6 +79,13 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Add this configuration block
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+}
 
 ROOT_URLCONF = 'pathseeker.urls'
 # CORS_ALLOWED_ORIGINS = [

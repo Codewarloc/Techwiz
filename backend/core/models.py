@@ -100,6 +100,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     education_level = models.CharField(max_length=200, blank=True)
     interests = models.JSONField(default=list, blank=True)  # ["ai","web"]
+    skills = models.JSONField(default=list, blank=True)
     profile_image = models.ImageField(upload_to="profiles/", blank=True, null=True)
     resume = models.FileField(upload_to="resumes/", blank=True, null=True)  # optional resume upload
     updated_at = models.DateTimeField(auto_now=True)
@@ -183,3 +184,24 @@ class Bookmark(models.Model):
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
+
+class Bookmark(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    career = models.ForeignKey(Career, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "career")
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"Token for {self.user.email}"
+
+
+

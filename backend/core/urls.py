@@ -19,7 +19,8 @@ router.register(r"multimedia", MultimediaViewSet)
 router.register(r"questions", QuizQuestionViewSet)
 router.register(r"feedback", FeedbackViewSet)
 router.register(r"bookmarks", BookmarkViewSet)
-router.register(r'quizresults', QuizResultViewSet)
+router.register(r'quizresults', QuizResultViewSet, basename="quizresults")
+
 
 urlpatterns = router.urls
 
