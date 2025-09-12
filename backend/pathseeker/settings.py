@@ -31,6 +31,11 @@ ALLOWED_HOSTS = [
     'localhost',
 ]
 
+# Add this setting to allow your frontend to make requests
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080", # The origin of your React app
+    "http://127.0.0.1:8080",
+]
 
 # For development, email will be printed to the console.
 # For production, configure a real email backend (e.g., SMTP).
@@ -52,6 +57,7 @@ FRONTEND_URL = "http://localhost:5173" # Adjust if your port is different
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin', # Add this line
     "corsheaders",
     'django.contrib.admin',
     'django.contrib.auth',
@@ -88,21 +94,11 @@ REST_FRAMEWORK = {
 }
 
 ROOT_URLCONF = 'pathseeker.urls'
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:8080", 
-#     "http://127.0.0.1:8080",
-#     "http://localhost:8082", 
-#     "http://127.0.0.1:8082",
-#     'http://127.0.0.1:8000'
-# ]
-CORS_ALLOW_ALL_ORIGINS = True
-
-
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'], # Add this line
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -182,4 +178,63 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # This tells JWT to use the 'pk' attribute of your custom user model instead of 'id'
 SIMPLE_JWT = {
     "USER_ID_FIELD": "pk",
+}
+
+# --- JAZZMIN SETTINGS ---
+JAZZMIN_SETTINGS = {
+    # title of the window (Will default to current_admin_site.site_title if absent or None)
+    "site_title": "PathSeeker Admin",
+
+    # Title on the login screen (19 chars max) (defaults to current_admin_site.site_header if absent or None)
+    "site_header": "PathSeeker",
+
+    # Title on the brand (19 chars max) (defaults to current_admin_site.site_header if absent or None)
+    "site_brand": "PathSeeker",
+
+    # Welcome text on the login screen
+    "welcome_sign": "Welcome to the PathSeeker Admin Panel",
+
+    # Copyright on the footer
+    "copyright": "Techwiz Ltd",
+
+    # The model admin to search from the search bar, search bar omitted if excluded
+    "search_model": "core.User",
+
+    # Custom dashboard view
+    "dashboard_view": "core.views.dashboard_view",
+
+    # List of apps (and models) to base side menu ordering off of
+    "order_with_respect_to": ["core", "core.User", "core.UserProfile", "core.Career", "core.QuizResult", "core.Resource"],
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-dark",
+    "accent": "accent-primary",
+    "navbar": "navbar-dark",
+    "no_navbar_border": False,
+    "navbar_fixed": True,
+    "layout_boxed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": True,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": False,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "darkly",
+    "dark_mode_theme": "darkly",
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success"
+    }
 }

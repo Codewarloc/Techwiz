@@ -4,56 +4,41 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Brain, ArrowRight, ArrowLeft, Award, Briefcase } from "lucide-react";
-import { useState } from "react";
-import axios from "axios";
+import { Brain, ArrowRight, ArrowLeft, Award, Briefcase, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api"; // Assuming you have a configured axios instance
+
+// Define the type for a single question fetched from the backend
+interface Question {
+  question_id: number;
+  text: string;
+  options: { text: string; category: string }[];
+}
 
 const Quiz = () => {
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Questions with categories
-  const questions = [
-    {
-      question: "What type of work environment do you prefer?",
-      options: [
-        { text: "Collaborative team environment", category: "Leadership" },
-        { text: "Independent work with minimal supervision", category: "Analytical" },
-        { text: "Dynamic, fast-paced environment", category: "Creative" },
-        { text: "Structured, organized workplace", category: "Tech" },
-      ],
-    },
-    {
-      question: "Which activity sounds most appealing to you?",
-      options: [
-        { text: "Solving complex technical problems", category: "Tech" },
-        { text: "Creating visual designs and experiences", category: "Creative" },
-        { text: "Analyzing data to find insights", category: "Analytical" },
-        { text: "Leading and managing teams", category: "Leadership" },
-      ],
-    },
-    {
-      question: "What motivates you most in your career?",
-      options: [
-        { text: "Making a positive impact on society", category: "Leadership" },
-        { text: "Financial success and stability", category: "Analytical" },
-        { text: "Creative expression and innovation", category: "Creative" },
-        { text: "Recognition and professional growth", category: "Tech" },
-      ],
-    },
-    {
-      question: "How do you prefer to learn new skills?",
-      options: [
-        { text: "Hands-on experience and practice", category: "Tech" },
-        { text: "Reading and theoretical study", category: "Analytical" },
-        { text: "Mentorship and guidance from experts", category: "Leadership" },
-        { text: "Trial and error experimentation", category: "Creative" },
-      ],
-    },
-  ];
+  // Fetch questions from the backend when the component mounts
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        const response = await api.get<Question[]>("/questions/");
+        setQuestions(response.data);
+      } catch (err) {
+        setError("Failed to load quiz questions. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuestions();
+  }, []);
 
-  // Career suggestions
+  // Career suggestions (can also be moved to backend later)
   const careerSuggestions: Record<string, string[]> = {
     Tech: ["Software Engineer", "Data Scientist", "Cloud Engineer", "Cybersecurity Analyst"],
     Creative: ["UX/UI Designer", "Graphic Designer", "Content Creator", "Animator"],
@@ -61,7 +46,7 @@ const Quiz = () => {
     Leadership: ["Project Manager", "Team Lead", "Entrepreneur", "HR Manager"],
   };
 
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const progress = questions.length > 0 ? ((currentQuestion + 1) / questions.length) * 100 : 0;
 
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {
@@ -82,18 +67,11 @@ const Quiz = () => {
   };
 
   const calculateResults = () => {
-    const scores: Record<string, number> = {
-      Tech: 0,
-      Creative: 0,
-      Analytical: 0,
-      Leadership: 0,
-    };
-
+    const scores: Record<string, number> = { Tech: 0, Creative: 0, Analytical: 0, Leadership: 0 };
     answers.forEach((answer, idx) => {
       const option = questions[idx].options.find((opt) => opt.text === answer);
       if (option) scores[option.category] += 1;
     });
-
     let bestCategory = "Tech";
     let maxScore = 0;
     for (const category in scores) {
@@ -102,40 +80,43 @@ const Quiz = () => {
         bestCategory = category;
       }
     }
-
     return { scores, bestCategory };
   };
 
-  // ✅ Submit quiz results to backend
   const handleSubmit = async () => {
     const { scores, bestCategory } = calculateResults();
-
     try {
-      // 🔑 Get token from localStorage (assuming you stored it after login)
-      const token = localStorage.getItem("access");
-
-      await axios.post(
-        "http://127.0.0.1:8000/api/quizresults/",
-        {
-          scores: scores,
-          best_category: bestCategory,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`, // ✅ pass token for authentication
-          },
-        }
-      );
-
+      await api.post("/quizresults/", {
+        scores: scores,
+        best_category: bestCategory,
+      });
       console.log("Quiz result submitted successfully");
     } catch (err) {
       console.error("Error submitting quiz result:", err);
     }
-
     setShowResults(true);
   };
 
-  // ✅ Results Page
+  // Loading State
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg">Loading Quiz...</p>
+      </div>
+    );
+  }
+
+  // Error State
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-center">
+        <p className="text-lg text-destructive">{error}</p>
+      </div>
+    );
+  }
+
+  // Results Page
   if (showResults) {
     const { scores, bestCategory } = calculateResults();
 
@@ -189,7 +170,7 @@ const Quiz = () => {
     );
   }
 
-  // ✅ Quiz Page
+  // Quiz Page
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -225,7 +206,7 @@ const Quiz = () => {
             </CardHeader>
             <CardContent>
               <h3 className="text-lg font-semibold mb-6">
-                {questions[currentQuestion].question}
+                {questions[currentQuestion].text}
               </h3>
 
               <RadioGroup

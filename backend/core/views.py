@@ -6,6 +6,9 @@ from django.utils import timezone
 from datetime import timedelta
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib.admin.views.decorators import staff_member_required
+from django.shortcuts import render
+from django.db.models import Count
 
 from .models import (
     User, Career, Resource, SuccessStory, UserProfile,
@@ -18,24 +21,39 @@ from .serializers import (
     FeedbackSerializer, BookmarkSerializer, QuizResultSerializer
 )
 
-# -------------------------
-# User registration viewset
-# -------------------------
+# --- ViewSets ---
+
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    """
+    API endpoint that allows users to be viewed or edited.
+    """
+    queryset = User.objects.all().order_by('-created_at')
     serializer_class = UserSerializer
-    permission_classes = [permissions.AllowAny]  # registration open
+    # Add authentication_classes to the viewset
+    authentication_classes = [] 
 
     def get_permissions(self):
-        # Allow anyone to create/register; restrict other actions
-        if self.action in ["create"]:
-            return [permissions.AllowAny()]
-        return [permissions.IsAdminUser()]
+        """
+        Allow unauthenticated users to create an account (register).
+        Otherwise, require admin permissions.
+        """
+        if self.action == 'create':
+            # For 'create' (registration), no permissions are needed.
+            self.permission_classes = [permissions.AllowAny]
+        else:
+            # For all other actions, default to the global authentication and permission scheme.
+            # This will re-enable JWT authentication for listing, updating, etc.
+            self.authentication_classes = viewsets.ModelViewSet.authentication_classes
+            self.permission_classes = [permissions.IsAdminUser]
+        return super().get_permissions()
 
 
-# -------------------------
-# Career / Resource / etc
-# -------------------------
+class UserProfileViewSet(viewsets.ModelViewSet):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
 class CareerViewSet(viewsets.ModelViewSet):
     queryset = Career.objects.all()
     serializer_class = CareerSerializer
@@ -54,22 +72,16 @@ class SuccessStoryViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
-class UserProfileViewSet(viewsets.ModelViewSet):
-    queryset = UserProfile.objects.all()
-    serializer_class = UserProfileSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-
 class MultimediaViewSet(viewsets.ModelViewSet):
     queryset = Multimedia.objects.all()
     serializer_class = MultimediaSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAdminUser]
 
 
 class QuizQuestionViewSet(viewsets.ModelViewSet):
     queryset = QuizQuestion.objects.all()
     serializer_class = QuizQuestionSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class QuizResultViewSet(viewsets.ModelViewSet):
@@ -201,3 +213,33 @@ class PasswordResetConfirmView(generics.GenericAPIView):
             {"detail": "Password has been reset successfully."},
             status=status.HTTP_200_OK,
         )
+
+
+# --- Custom Admin Dashboard View ---
+
+@staff_member_required
+def dashboard_view(request):
+    # 1. Active Users (users who have submitted a quiz or created in the last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    active_user_ids = QuizResult.objects.filter(submitted_at__gte=thirty_days_ago).values_list('user_id', flat=True)
+    recent_users = User.objects.filter(created_at__gte=thirty_days_ago).values_list('user_id', flat=True)
+    active_users_count = User.objects.filter(pk__in=set(list(active_user_ids) + list(recent_users))).count()
+
+    # 2. Total Quiz Attempts
+    quiz_attempts_count = QuizResult.objects.count()
+
+    # 3. Popular Content (most common quiz result categories)
+    popular_categories = QuizResult.objects.values('best_category').annotate(count=Count('best_category')).order_by('-count')[:5]
+
+    # 4. Most Bookmarked Careers
+    popular_careers = Bookmark.objects.values('career__title').annotate(count=Count('career')).order_by('-count')[:5]
+
+    context = {
+        **admin.site.each_context(request),
+        'active_users_count': active_users_count,
+        'quiz_attempts_count': quiz_attempts_count,
+        'popular_categories': popular_categories,
+        'popular_careers': popular_careers,
+        'title': 'Dashboard'
+    }
+    return render(request, "admin/dashboard.html", context)

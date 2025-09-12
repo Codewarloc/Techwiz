@@ -1,0 +1,78 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="row">
+    <!-- Stat Card: Active Users -->
+    <div class="col-lg-3 col-6">
+        <div class="small-box bg-info">
+            <div class="inner">
+                <h3>{{ active_users_count }}</h3>
+                <p>Active Users (Last 30 Days)</p>
+            </div>
+            <div class="icon">
+                <i class="ion ion-person-stalker"></i>
+            </div>
+            <a href="{% url 'admin:core_user_changelist' %}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+        </div>
+    </div>
+
+    <!-- Stat Card: Quiz Attempts -->
+    <div class="col-lg-3 col-6">
+        <div class="small-box bg-success">
+            <div class="inner">
+                <h3>{{ quiz_attempts_count }}</h3>
+                <p>Total Quiz Attempts</p>
+            </div>
+            <div class="icon">
+                <i class="ion ion-stats-bars"></i>
+            </div>
+            <a href="{% url 'admin:core_quizresult_changelist' %}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Popular Quiz Categories -->
+    <div class="col-md-6">
+        <div class="card card-primary card-outline">
+            <div class="card-header">
+                <h3 class="card-title">Most Popular Quiz Categories</h3>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for category in popular_categories %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ category.best_category|capfirst }}
+                        <span class="badge badge-primary badge-pill">{{ category.count }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item">No quiz results yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popular Bookmarked Careers -->
+    <div class="col-md-6">
+        <div class="card card-info card-outline">
+            <div class="card-header">
+                <h3 class="card-title">Most Bookmarked Careers</h3>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for career in popular_careers %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ career.career__title }}
+                        <span class="badge badge-info badge-pill">{{ career.count }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item">No careers have been bookmarked.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

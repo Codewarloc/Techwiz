@@ -110,33 +110,24 @@ class UserProfile(models.Model):
 
 # Multimedia
 class Multimedia(models.Model):
-    media_id = models.BigAutoField(primary_key=True)
+    multimedia_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=255)
-    type = models.CharField(max_length=50)  # "video", "audio", "article"
-    url = models.URLField()
-    tags = models.JSONField(default=list, blank=True)
-    transcript = models.TextField(blank=True)
-    rating_avg = models.FloatField(default=0.0)
-    rating_count = models.PositiveIntegerField(default=0)
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="media")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.title
+    description = models.TextField(blank=True)
+    file = models.FileField(upload_to="multimedia/")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
 # QuizQuestions
 class QuizQuestion(models.Model):
     question_id = models.BigAutoField(primary_key=True)
-    question_text = models.TextField()
-    TYPE_CHOICES = [("mcq", "Multiple Choice"), ("text", "Text"), ("likert", "Likert")]
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="mcq")
-    options = models.JSONField(default=list, blank=True)  # ["option a","option b"]
-    correct_answer = models.JSONField(null=True, blank=True)  # single or list depending on type
-    weightage = models.FloatField(default=1.0)
+    text = models.CharField(max_length=500)
+    options = models.JSONField()  # e.g., [{"text": "...", "category": "..."}, ...]
+    order = models.PositiveIntegerField(default=0) # To maintain question order
+
+    class Meta:
+        ordering = ['order']
 
     def __str__(self):
-        return self.question_text[:80]
-
+        return self.text
         
 class QuizResult(models.Model):
     result_id = models.BigAutoField(primary_key=True)
@@ -157,20 +148,11 @@ class QuizResult(models.Model):
 # Feedback
 class Feedback(models.Model):
     feedback_id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="feedbacks"
-    )
-    category = models.CharField(max_length=100)  # bug, suggestion, query
-    message = models.TextField()
-    status = models.CharField(max_length=50, default="open")  # open, closed, in_progress
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    rating = models.IntegerField()
+    comment = models.TextField()
     submitted_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Feedback {self.feedback_id} by {self.user}"
 # Additional linking model (if you want bookmarks etc later)
 class Bookmark(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -180,19 +162,11 @@ class Bookmark(models.Model):
     class Meta:
         unique_together = ("user", "career")
 
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
-
-class Bookmark(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    career = models.ForeignKey(Career, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ("user", "career")
-
 
 class PasswordResetToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -202,6 +176,5 @@ class PasswordResetToken(models.Model):
 
     def __str__(self):
         return f"Token for {self.user.email}"
-
 
 
