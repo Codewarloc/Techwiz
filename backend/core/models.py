@@ -1,11 +1,12 @@
 from django.db import models
-from django.contrib.auth.models import (
-    AbstractBaseUser, PermissionsMixin, BaseUserManager
-)
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+# -----------------------
+# User & Manager
+# -----------------------
 class UserManager(BaseUserManager):
     def create_user(self, email, uname=None, password=None, role="student", **extra_fields):
         if not email:
@@ -33,11 +34,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     user_id = models.BigAutoField(primary_key=True)
     uname = models.CharField(max_length=150)
     email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=150, blank=True, default='John')  # <-- Add this
-    last_name = models.CharField(max_length=150, blank=True,  default = 'Doe')   # <-- Add this
+    first_name = models.CharField(max_length=150, blank=True, default='John')
+    last_name = models.CharField(max_length=150, blank=True, default='Doe')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="student")
     is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)  # access to admin site
+    is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = UserManager()
@@ -48,28 +49,34 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+
+# -----------------------
 # Careers
+# -----------------------
 class Career(models.Model):
     career_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=255)
     description = models.TextField()
     domain = models.CharField(max_length=100)
-    required_skills = models.JSONField(default=list, blank=True)  # ["python","sql"]
+    required_skills = models.JSONField(default=list, blank=True)
     education_path = models.TextField(blank=True)
-    expected_salary = models.CharField(max_length=100, blank=True)  # or IntegerField with range
+    expected_salary = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
 
+
+# -----------------------
 # Resources
+# -----------------------
 class Resource(models.Model):
     resource_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=255)
     category = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     file = models.FileField(upload_to="resources/", blank=True, null=True)
-    file_url = models.URLField(blank=True)  # optional external URL
+    file_url = models.URLField(blank=True)
     tag = models.CharField(max_length=100, blank=True)
     views_count = models.PositiveIntegerField(default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="resources")
@@ -78,37 +85,45 @@ class Resource(models.Model):
     def __str__(self):
         return self.title
 
+
+# -----------------------
 # Success Stories
+# -----------------------
 class SuccessStory(models.Model):
     story_id = models.BigAutoField(primary_key=True)
-    rname = models.CharField(max_length=255)  # real name or role name
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="success_stories")
+    name = models.CharField(max_length=255)
     domain = models.CharField(max_length=100)
-    story_text = models.TextField()
-    image = models.ImageField(upload_to="stories/", blank=True, null=True)
-    image_url = models.URLField(blank=True)
-    submitted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="submitted_stories")
-    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="approved_stories")
-    approved_at = models.DateTimeField(null=True, blank=True)
+    education = models.TextField()
+    challenge = models.TextField()
+    outcome = models.TextField()
+    is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.rname} ({self.domain})"
+        return f"Story by {self.name} in {self.domain}"
 
-# UserProfiles
+
+# -----------------------
+# User Profiles
+# -----------------------
 class UserProfile(models.Model):
     profile_id = models.BigAutoField(primary_key=True)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     education_level = models.CharField(max_length=200, blank=True)
-    interests = models.JSONField(default=list, blank=True)  # ["ai","web"]
+    interests = models.JSONField(default=list, blank=True)
     skills = models.JSONField(default=list, blank=True)
     profile_image = models.ImageField(upload_to="profiles/", blank=True, null=True)
-    resume = models.FileField(upload_to="resumes/", blank=True, null=True)  # optional resume upload
+    resume = models.FileField(upload_to="resumes/", blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Profile: {self.user.uname}"
 
+
+# -----------------------
 # Multimedia
+# -----------------------
 class Multimedia(models.Model):
     multimedia_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=255)
@@ -116,44 +131,66 @@ class Multimedia(models.Model):
     file = models.FileField(upload_to="multimedia/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
-# QuizQuestions
+
+# -----------------------
+# Quiz
+# -----------------------
 class QuizQuestion(models.Model):
     question_id = models.BigAutoField(primary_key=True)
     text = models.CharField(max_length=500)
-    options = models.JSONField()  # e.g., [{"text": "...", "category": "..."}, ...]
-    order = models.PositiveIntegerField(default=0) # To maintain question order
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['order']
 
     def __str__(self):
         return self.text
-        
+
+
+class Option(models.Model):
+    question = models.ForeignKey(QuizQuestion, on_delete=models.CASCADE, related_name="options")
+    text = models.CharField(max_length=255)
+    category = models.CharField(max_length=50)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.text} ({self.category})"
+
+
 class QuizResult(models.Model):
     result_id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE, # Changed from SET_NULL
-        related_name="quiz_results"
-    )
-    scores = models.JSONField()  
-    # Example: {"Tech": 2, "Creative": 1, "Analytical": 0, "Leadership": 1}
-    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="quiz_results")
+    scores = models.JSONField()
     best_category = models.CharField(max_length=100)
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Result {self.result_id} - {self.best_category}"
 
+
+# -----------------------
 # Feedback
+# -----------------------
 class Feedback(models.Model):
+    CATEGORY_CHOICES = [
+        ("bug", "Bug"),
+        ("suggestion", "Suggestion"),
+        ("query", "Query"),
+    ]
+
     feedback_id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-    rating = models.IntegerField()
-    comment = models.TextField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="suggestion")
+    message = models.TextField()
     submitted_at = models.DateTimeField(auto_now_add=True)
 
-# Additional linking model (if you want bookmarks etc later)
+
+# -----------------------
+# Bookmark
+# -----------------------
 class Bookmark(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     career = models.ForeignKey(Career, on_delete=models.CASCADE)
@@ -163,11 +200,18 @@ class Bookmark(models.Model):
         unique_together = ("user", "career")
 
 
+# -----------------------
+# Signals
+# -----------------------
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
 
+
+# -----------------------
+# Password Reset
+# -----------------------
 class PasswordResetToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     token = models.CharField(max_length=255, unique=True)
@@ -176,5 +220,3 @@ class PasswordResetToken(models.Model):
 
     def __str__(self):
         return f"Token for {self.user.email}"
-
-

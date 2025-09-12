@@ -1,8 +1,19 @@
 from django.contrib import admin
 from .models import (
     User, Career, Resource, SuccessStory, UserProfile,
-    Multimedia, QuizQuestion, Feedback, Bookmark, QuizResult, PasswordResetToken
+    Multimedia, QuizQuestion, Feedback, Bookmark, QuizResult, PasswordResetToken, Option
 )
+
+class OptionInline(admin.TabularInline):
+    model = Option
+    extra = 0 
+
+
+@admin.register(QuizQuestion)
+class QuizQuestionAdmin(admin.ModelAdmin):
+    list_display = ("text", "order")
+    inlines = [OptionInline]
+    search_fields = ("text",)
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -34,10 +45,20 @@ class PasswordResetTokenAdmin(admin.ModelAdmin):
     list_display = ("user", "created_at", "expires_at")
     search_fields = ("user__email",)
 
+@admin.register(SuccessStory)
+class SuccessStoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'user', 'domain', 'is_approved', 'created_at')
+    list_filter = ('is_approved', 'domain')
+    list_editable = ('is_approved',)
+    search_fields = ('name', 'user__email')
+    actions = ['approve_stories']
+
+    def approve_stories(self, request, queryset):
+        queryset.update(is_approved=True)
+    approve_stories.short_description = "Mark selected stories as approved"
+
 # Register other models with default admin interface
 admin.site.register(Resource)
-admin.site.register(SuccessStory)
 admin.site.register(Multimedia)
-admin.site.register(QuizQuestion)
 admin.site.register(Feedback)
-admin.site.register(Bookmark)    
+admin.site.register(Bookmark)

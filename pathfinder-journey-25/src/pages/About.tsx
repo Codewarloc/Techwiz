@@ -1,69 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-
 import { BookOpen, Users, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useAuth } from "./auth/authcontext"; // Import auth context
+import api from "@/lib/api"; // Import your API instance
+import { toast } from "@/components/ui/use-toast";
 
-// ✅ Mock success stories data
-const initialStories = [
-  {
-    id: 1,
-    name: "Odekunle Aanuoluwapo",
-    domain: "Sports",
-    education: "Trained at a local football academy",
-    challenge:
-      "Faced limited opportunities and lack of sponsorship while pursuing a professional career.",
-    outcome:
-      "Became a professional footballer, playing for both club and representing his country at international tournaments.",
-  },
-  {
-    id: 2,
-    name: "David Lee",
-    domain: "Medicine",
-    education: "M.D. in Pediatrics",
-    challenge: "Balancing medical school with financial challenges.",
-    outcome: "Now runs a children’s clinic serving underserved areas.",
-  },
-  {
-    id: 3,
-    name: "Ojure Mayowa",
-    domain: "Sports",
-    education: "Rose through grassroots football tournaments and local leagues",
-    challenge:
-      "Overcame multiple injuries and lack of training facilities while chasing his football dreams.",
-    outcome:
-      "Signed by a professional football club and became a role model for aspiring young athletes in his community.",
-  },
-  {
-    id: 4,
-    name: "Lesley Nkwocha",
-    domain: "Technology",
-    education: "B.Sc in Information Technology",
-    challenge: "Low attention span.",
-    outcome: "Now works at Spotify.",
-  },
-  {
-    id: 5,
-    name: "Odafe Akoreha",
-    domain: "Game Development",
-    education: "Middlesex Graduate",
-    challenge: "Lack of resources and tools.",
-    outcome: "Now works as a Game Developer at FromSoftware.",
-  },
-  {
-    id: 6,
-    name: "James Itam",
-    domain: "Technology",
-    education: "Studied Computer Science at University",
-    challenge:
-      "Struggled with balancing academics and learning real-world software development skills.",
-    outcome:
-      "Became a software developer specializing in full-stack web applications and contributed to impactful open-source projects.",
-  },
-];
+// Define the Story type
+interface Story {
+  story_id: number;
+  name: string;
+  domain: string;
+  education: string;
+  challenge: string;
+  outcome: string;
+}
 
 const domains = ["All", "Technology", "Medicine", "Business", "Sports", "Game Development"];
 
@@ -93,7 +47,8 @@ const Timeline = ({ education, challenge, outcome }: any) => {
 };
 
 const About = () => {
-  const [stories, setStories] = useState(initialStories);
+  const { isAuthenticated } = useAuth(); // Get authentication status
+  const [stories, setStories] = useState<Story[]>([]);
   const [filter, setFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
   const [newStory, setNewStory] = useState({
@@ -103,21 +58,52 @@ const About = () => {
     challenge: "",
     outcome: "",
   });
+  const [loading, setLoading] = useState(false);
+
+  // Fetch stories from the backend
+  useEffect(() => {
+    const fetchStories = async () => {
+      try {
+        const response = await api.get<Story[]>("/successstories/");
+        setStories(response.data);
+      } catch (error) {
+        console.error("Failed to fetch success stories:", error);
+        toast({
+          title: "Error",
+          description: "Could not load success stories.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchStories();
+  }, []);
 
   const filteredStories =
     filter === "All"
       ? stories
       : stories.filter((story) => story.domain === filter);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newEntry = {
-      id: stories.length + 1,
-      ...newStory,
-    };
-    setStories([...stories, newEntry]);
-    setNewStory({ name: "", domain: "", education: "", challenge: "", outcome: "" });
-    setShowForm(false);
+    setLoading(true);
+    try {
+      await api.post("/successstories/", newStory);
+      toast({
+        title: "Success!",
+        description: "Your story has been submitted for admin approval.",
+      });
+      setNewStory({ name: "", domain: "", education: "", challenge: "", outcome: "" });
+      setShowForm(false);
+    } catch (error) {
+      console.error("Failed to submit story:", error);
+      toast({
+        title: "Submission Failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -177,7 +163,7 @@ const About = () => {
         {/* Stories Grid with Timeline */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredStories.map((story) => (
-            <Card key={story.id} className="shadow-md hover:shadow-lg transition-all">
+            <Card key={story.story_id} className="shadow-md hover:shadow-lg transition-all">
               <CardContent className="p-6 space-y-4">
                 <h2 className="text-xl font-semibold text-primary">{story.name}</h2>
                 <p className="text-sm text-muted-foreground">
@@ -195,11 +181,12 @@ const About = () => {
 
         {/* Submit Story Section */}
         <div className="text-center mt-12">
-          {!showForm ? (
+          {isAuthenticated && !showForm && (
             <Button variant="outline" onClick={() => setShowForm(true)}>
               Share Your Story
             </Button>
-          ) : (
+          )}
+          {showForm && (
             <form
               onSubmit={handleSubmit}
               className="max-w-lg mx-auto space-y-4 p-6 border rounded-lg shadow-md bg-background"
@@ -256,11 +243,14 @@ const About = () => {
                 required
               />
               <div className="flex space-x-4">
-                <Button type="submit">Add Story</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Submitting..." : "Add Story"}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowForm(false)}
+                  disabled={loading}
                 >
                   Cancel
                 </Button>

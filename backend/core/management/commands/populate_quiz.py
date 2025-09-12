@@ -1,11 +1,12 @@
+# core/management/commands/populate_quiz_questions.py
 from django.core.management.base import BaseCommand
-from core.models import QuizQuestion
+from core.models import QuizQuestion, Option
 
 class Command(BaseCommand):
     help = 'Populates the database with initial quiz questions'
 
     def handle(self, *args, **kwargs):
-        self.stdout.write('Deleting existing quiz questions...')
+        Option.objects.all().delete()
         QuizQuestion.objects.all().delete()
 
         questions_data = [
@@ -27,7 +28,9 @@ class Command(BaseCommand):
                     {"text": "Leading and managing teams", "category": "Leadership"},
                 ],
             },
-            {
+
+
+           {
                 "text": "What motivates you most in your career?",
                 "options": [
                     {"text": "Making a positive impact on society", "category": "Leadership"},
@@ -36,6 +39,7 @@ class Command(BaseCommand):
                     {"text": "Recognition and professional growth", "category": "Tech"},
                 ],
             },
+
             {
                 "text": "How do you prefer to learn new skills?",
                 "options": [
@@ -45,14 +49,31 @@ class Command(BaseCommand):
                     {"text": "Trial and error experimentation", "category": "Creative"},
                 ],
             },
+
+            
+
+            { 
+                "text": "You’re given a group project. What role do you naturally take?",
+                "options": [
+                    {"text": "Leading the team", "category": "Leadership"},
+                    {"text": "Solving the technical challenges", "category": "Tech"},
+                    {"text": "Designing visuals or presentation", "category": "Creative"},
+                    {"text": "Analyzing data and research", "category": "Analytical"},
+                ],
+            },
+            
         ]
 
-        self.stdout.write('Creating new quiz questions...')
         for i, q_data in enumerate(questions_data):
-            QuizQuestion.objects.create(
+            question = QuizQuestion.objects.create(
                 text=q_data['text'],
-                options=q_data['options'],
                 order=i
             )
+            for opt in q_data['options']:
+                Option.objects.create(
+                    question=question,
+                    text=opt['text'],
+                    category=opt['category']
+                )
 
         self.stdout.write(self.style.SUCCESS('Successfully populated the database with quiz questions.'))
