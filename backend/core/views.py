@@ -59,7 +59,12 @@ class QuizQuestionViewSet(viewsets.ModelViewSet):
     
 class QuizResultViewSet(viewsets.ModelViewSet):
     queryset = QuizResult.objects.all()
-    serializer_class = QuizResultSerializer  # Admin controls quiz
+    serializer_class = QuizResultSerializer
+    permission_classes = [permissions.IsAuthenticated] # Require authentication
+
+    # Automatically attach the logged-in user when creating a quiz result
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()

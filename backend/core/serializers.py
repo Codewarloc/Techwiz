@@ -55,7 +55,8 @@ class QuizQuestionSerializer(serializers.ModelSerializer):
 class QuizResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuizResult
-        fields = "__all__"
+        fields = ['result_id', 'user', 'scores', 'best_category', 'submitted_at']
+        read_only_fields = ['user', 'result_id', 'submitted_at']
 
 class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:

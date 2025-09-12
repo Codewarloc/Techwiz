@@ -141,9 +141,7 @@ class QuizResult(models.Model):
     result_id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE, # Changed from SET_NULL
         related_name="quiz_results"
     )
     scores = models.JSONField()  
