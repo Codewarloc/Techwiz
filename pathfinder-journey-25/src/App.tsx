@@ -15,6 +15,7 @@ import Quiz from "./pages/Quiz";
 import Multimedia from "./pages/Multimedia";
 import About from "./pages/About";
 import Profile from "./pages/profile";
+import Resources from "./pages/Resources"; // Import the new page
 
 import Footer from "./components/footer";
 import { Navigation } from "./components/Navigation";
@@ -36,7 +37,7 @@ const App = () => (
           <Navigation />
 
           {/* Theme Toggle fixed at top-right */}
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="fixed top-4 right-60 z-50">
             <ThemeToggle />
           </div>
 
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/quiz" element={<Quiz />} />
               <Route path="/about" element={<About />} />
               <Route path="/profile" element={<EditProfile/>} />
+              <Route path="/resources" element={<Resources />} /> {/* Add this route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

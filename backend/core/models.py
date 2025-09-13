@@ -78,14 +78,32 @@ class Career(models.Model):
 # Resources
 # -----------------------
 class Resource(models.Model):
+    TYPE_CHOICES = [
+        ("PDF", "PDF Document"),
+        ("Checklist", "Checklist"),
+        ("Infographic", "Infographic"),
+    ]
+    AUDIENCE_CHOICES = [
+        ("Student", "Student"),
+        ("Graduate", "Graduate"),
+        ("Professional", "Professional"),
+        ("All", "All"),
+    ]
+
     resource_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=255)
-    category = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    # Type of resource (PDF, Checklist, etc.)
+    category = models.CharField(max_length=100, choices=TYPE_CHOICES, default="PDF")
+    # For self-hosted files
     file = models.FileField(upload_to="resources/", blank=True, null=True)
+    # For externally linked files
     file_url = models.URLField(blank=True)
-    tag = models.CharField(max_length=100, blank=True)
-    views_count = models.PositiveIntegerField(default=0)
+    # Backend-driven tags
+    tags = models.JSONField(default=list, blank=True)
+    target_audience = models.CharField(max_length=50, choices=AUDIENCE_CHOICES, default="All")
+    # Counter for popularity tracking
+    download_count = models.PositiveIntegerField(default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="resources")
     created_at = models.DateTimeField(auto_now_add=True)
 

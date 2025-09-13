@@ -27,6 +27,7 @@ export const Navigation = () => {
             <Link to="/" className="text-muted-foreground hover:text-foreground">Home</Link>
             <Link to="/careers" className="text-muted-foreground hover:text-foreground">Careers</Link>
             <Link to="/quiz" className="text-muted-foreground hover:text-foreground">Take Quiz</Link>
+            <Link to="/resources" className="text-muted-foreground hover:text-foreground">Resources</Link> {/* Add this link */}
             <Link to="/multimedia" className="text-muted-foreground hover:text-foreground">Multimedia</Link>
             <Link to="/about" className="text-muted-foreground hover:text-foreground">About</Link>
           </div>
@@ -89,6 +90,7 @@ export const Navigation = () => {
               <Link to="/" className="hover:text-foreground">Home</Link>
               <Link to="/careers" className="hover:text-foreground">Careers</Link>
               <Link to="/quiz" className="hover:text-foreground">Take Quiz</Link>
+              <Link to="/resources" className="hover:text-foreground">Resources</Link> {/* Add this link */}
               <Link to="/multimedia" className="hover:text-foreground">Multimedia</Link>
               <Link to="/about" className="hover:text-foreground">About</Link>
 

@@ -4,17 +4,15 @@ from .models import (
     Multimedia, QuizQuestion, Feedback, Bookmark, QuizResult, Option
 )
 
-# -----------------------------
-# Option Serializer (used in QuizQuestion)
-# -----------------------------
+
+# Option Serializer
 class OptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Option
         fields = ["id", "text", "category"]
 
-# -----------------------------
-# QuizQuestion Serializer
-# -----------------------------
+
+# Quiz Question Serializer
 class QuizQuestionSerializer(serializers.ModelSerializer):
     options = OptionSerializer(many=True, read_only=True)
 
@@ -22,18 +20,16 @@ class QuizQuestionSerializer(serializers.ModelSerializer):
         model = QuizQuestion
         fields = ["question_id", "text", "order", "options"]
 
-# -----------------------------
-# QuizResult Serializer
-# -----------------------------
+
+# Quiz Result Serializer
 class QuizResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuizResult
         fields = ['result_id', 'user', 'scores', 'best_category', 'submitted_at']
         read_only_fields = ['user', 'result_id', 'submitted_at']
 
-# -----------------------------
-# User Serializer (for registration)
-# -----------------------------
+
+# User Serializer
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
 
@@ -49,60 +45,66 @@ class UserSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(password=password, **validated_data)
         return user
 
-# -----------------------------
+
 # UserProfile Serializer
-# -----------------------------
 class UserProfileSerializer(serializers.ModelSerializer):
+    education = serializers.JSONField(required=False, default=list)
+    work_experience = serializers.JSONField(required=False, default=list)
+    skills = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    interests = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+
     class Meta:
         model = UserProfile
-        fields = "__all__"
+        fields = [
+            "id",
+            "user",
+            "bio",
+            "education",
+            "work_experience",
+            "skills",
+            "interests",
+        ]
+        read_only_fields = ["id", "user"]
 
-# -----------------------------
+
 # Career Serializer
-# -----------------------------
 class CareerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Career
         fields = "__all__"
 
-# -----------------------------
+
 # Resource Serializer
-# -----------------------------
 class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = "__all__"
 
-# -----------------------------
-# SuccessStory Serializer
-# -----------------------------
+
+# Success Story Serializer
 class SuccessStorySerializer(serializers.ModelSerializer):
     class Meta:
         model = SuccessStory
         fields = "__all__"
-        # Add this line to make the user field read-only
         read_only_fields = ['user']
 
-# -----------------------------
+
 # Multimedia Serializer
-# -----------------------------
 class MultimediaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Multimedia
         fields = "__all__"
 
-# -----------------------------
+
 # Feedback Serializer
-# -----------------------------
 class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
         fields = ['feedback_id', 'user', 'category', 'message', 'submitted_at']
         read_only_fields = ['feedback_id', 'user', 'submitted_at']
 
-# -----------------------------
+
 # Bookmark Serializer
-# -----------------------------
 class BookmarkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bookmark

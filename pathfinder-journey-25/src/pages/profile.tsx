@@ -1,4 +1,3 @@
-// src/pages/EditProfile.tsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "@/lib/api";
@@ -9,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, PlusCircle, MinusCircle, Briefcase, GraduationCap, Code, Heart } from "lucide-react";
 
-// Types for profile data
+// Types
 interface Education {
   id: number;
   institution: string;
@@ -36,7 +35,7 @@ interface ProfileData {
   workExperience: WorkExperience[];
   skills: string[];
   interests: string[];
-  profile_id?: number;
+  id?: number;
 }
 
 const EditProfile: React.FC = () => {
@@ -46,124 +45,103 @@ const EditProfile: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Fetch profile data from backend
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        // Get user info
-        const userRes = await api.get("auth/me/");
-        let profileRes;
-        try {
-          // Try to get profile info
-          profileRes = await api.get(`profiles/${userRes.data.user_id}/`);
-        } catch (err: any) {
-          // If profile does not exist, create it
-          profileRes = await api.post("profiles/", { user: userRes.data.user_id });
-        }
-        setProfile({
-          firstName: userRes.data.first_name || "",
-          lastName: userRes.data.last_name || "",
-          bio: profileRes.data.bio || "",
-          education: profileRes.data.education || [],
-          workExperience: profileRes.data.work_experience || [],
-          skills: profileRes.data.skills || [],
-          interests: profileRes.data.interests || [],
-          profile_id: profileRes.data.profile_id,
-        });
-      } catch (err: any) {
-        setError("Failed to load profile.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
+   const fetchProfile = async () => {
+  try {
+  
+    const userRes = await api.get("auth/me/");
+
+    
+    const profileRes = await api.get("profiles/me/");
+
+    setProfile({
+      firstName: userRes.data.first_name || "",
+      lastName: userRes.data.last_name || "",
+      bio: profileRes.data.bio || "",
+      education: profileRes.data.education || [],
+      workExperience: profileRes.data.work_experience || [],
+      skills: profileRes.data.skills || [],
+      interests: profileRes.data.interests || [],
+      id: profileRes.data.id,
+    });
+  } catch (err) {
+    console.error(err);
+    setError("Failed to load profile.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  fetchProfile();
   }, []);
 
-  // Input handlers (same as your current code, but check for null profile)
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (!profile) return;
-    setProfile((prev) => prev ? { ...prev, [name]: value } : prev);
+    setProfile(prev => prev ? { ...prev, [name]: value } : prev);
   };
 
-  // Handlers for dynamic fields (Education, Work Experience)
   const handleDynamicChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     index: number,
     field: "education" | "workExperience"
   ) => {
+    if (!profile) return;
     const { name, value } = e.target;
-    setProfile((prev) => {
-      const newArray = [...prev[field]];
-      newArray[index] = { ...newArray[index], [name]: value };
-      return { ...prev, [field]: newArray };
-    });
+    const arr = [...profile[field]];
+    arr[index] = { ...arr[index], [name]: value };
+    setProfile({ ...profile, [field]: arr });
   };
 
   const addDynamicField = (field: "education" | "workExperience") => {
-    setProfile((prev) => {
-      const newArray = [...prev[field]];
-      const newId = newArray.length > 0 ? newArray[newArray.length - 1].id + 1 : 1;
-      if (field === "education") {
-        newArray.push({ id: newId, institution: "", degree: "", fieldOfStudy: "", startDate: "", endDate: "" });
-      } else {
-        newArray.push({ id: newId, company: "", title: "", startDate: "", endDate: "", description: "" });
-      }
-      return { ...prev, [field]: newArray };
-    });
+    if (!profile) return;
+    const arr = [...profile[field]];
+    const newId = arr.length > 0 ? arr[arr.length - 1].id + 1 : 1;
+    if (field === "education") arr.push({ id: newId, institution: "", degree: "", fieldOfStudy: "", startDate: "", endDate: "" });
+    else arr.push({ id: newId, company: "", title: "", startDate: "", endDate: "", description: "" });
+    setProfile({ ...profile, [field]: arr });
   };
 
   const removeDynamicField = (index: number, field: "education" | "workExperience") => {
-    setProfile((prev) => {
-      const newArray = [...prev[field]];
-      newArray.splice(index, 1);
-      return { ...prev, [field]: newArray };
-    });
+    if (!profile) return;
+    const arr = [...profile[field]];
+    arr.splice(index, 1);
+    setProfile({ ...profile, [field]: arr });
   };
 
-  // Handlers for skills and interests
   const handleArrayChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     index: number,
     field: "skills" | "interests"
   ) => {
-    const { value } = e.target;
-    setProfile((prev) => {
-      const newArray = [...prev[field]];
-      newArray[index] = value;
-      return { ...prev, [field]: newArray };
-    });
+    if (!profile) return;
+    const arr = [...profile[field]];
+    arr[index] = e.target.value;
+    setProfile({ ...profile, [field]: arr });
   };
 
   const addArrayField = (field: "skills" | "interests") => {
-    setProfile((prev) => ({
-      ...prev,
-      [field]: [...prev[field], ""],
-    }));
+    if (!profile) return;
+    setProfile({ ...profile, [field]: [...profile[field], ""] });
   };
 
   const removeArrayField = (index: number, field: "skills" | "interests") => {
-    setProfile((prev) => {
-      const newArray = [...prev[field]];
-      newArray.splice(index, 1);
-      return { ...prev, [field]: newArray };
-    });
+    if (!profile) return;
+    const arr = [...profile[field]];
+    arr.splice(index, 1);
+    setProfile({ ...profile, [field]: arr });
   };
 
-  // Save profile to backend
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
     setSaving(true);
     setError(null);
+
     try {
-      // Update user info
-      await api.patch("auth/me/", {
-        first_name: profile.firstName,
-        last_name: profile.lastName,
-      });
-      // Update profile info
-      await api.patch(`profiles/${profile.profile_id}/`, {
+      await api.patch("auth/me/", { first_name: profile.firstName, last_name: profile.lastName });
+      await api.patch(`profiles/${profile.id}/`, {
         bio: profile.bio,
         education: profile.education,
         work_experience: profile.workExperience,
@@ -171,7 +149,8 @@ const EditProfile: React.FC = () => {
         interests: profile.interests,
       });
       alert("Profile saved successfully!");
-    } catch (err: any) {
+    } catch (err) {
+      console.error(err);
       setError("Failed to save profile.");
     } finally {
       setSaving(false);
@@ -184,225 +163,138 @@ const EditProfile: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
-      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-float dark:bg-primary/20" />
-      <div
-        className="absolute bottom-20 right-10 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-float dark:bg-secondary/20"
-        style={{ animationDelay: '2s' }}
-      />
-      
-      <div className="w-full max-w-2xl relative z-10">
-        <div className="flex items-center mb-8">
-          <Link to="/profile" className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Profile
-          </Link>
-        </div>
+      <div className="w-full max-w-3xl">
+        <Link to="/dashboard" className="flex items-center text-muted-foreground hover:text-foreground mb-6">
+          <ArrowLeft className="mr-2 w-4 h-4" /> Back to Dashboard
+        </Link>
 
-        {/* Profile Overview Section */}
-        <Card className="mb-8 backdrop-blur-sm bg-card/50 border-border/50 shadow-2xl dark:bg-gray-800/50 dark:border-gray-700/50">
+        {/* Profile Overview */}
+        <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-xl font-bold dark:text-white">Profile Overview</CardTitle>
+            <CardTitle>Profile Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-2">
+              <div><strong>Name:</strong> {profile.firstName} {profile.lastName}</div>
+              <div><strong>Bio:</strong> {profile.bio || <span className="text-muted-foreground">No bio yet.</span>}</div>
               <div>
-                <span className="font-semibold">Name:</span> {profile.firstName} {profile.lastName}
+                <strong>Education:</strong>
+                {profile.education.length ? (
+                  <ul className="ml-4 list-disc">
+                    {profile.education.map(e => (
+                      <li key={e.id}>{e.degree} in {e.fieldOfStudy} at {e.institution} ({e.startDate} - {e.endDate})</li>
+                    ))}
+                  </ul>
+                ) : <span className="text-muted-foreground ml-2">No education added.</span>}
               </div>
               <div>
-                <span className="font-semibold">Bio:</span> {profile.bio || <span className="text-muted-foreground">No bio yet.</span>}
-              </div>
-              <div>
-                <span className="font-semibold">Education:</span>
-                {profile.education.length > 0 ? (
-                  <ul className="list-disc ml-6">
-                    {profile.education.map((edu) => (
-                      <li key={edu.id}>
-                        {edu.degree} in {edu.fieldOfStudy} at {edu.institution} ({edu.startDate} - {edu.endDate})
+                <strong>Work Experience:</strong>
+                {profile.workExperience.length ? (
+                  <ul className="ml-4 list-disc">
+                    {profile.workExperience.map(w => (
+                      <li key={w.id}>
+                        {w.title} at {w.company} ({w.startDate} - {w.endDate})<br />
+                        <span className="text-muted-foreground">{w.description}</span>
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <span className="text-muted-foreground ml-2">No education added.</span>
-                )}
+                ) : <span className="text-muted-foreground ml-2">No work experience added.</span>}
               </div>
-              <div>
-                <span className="font-semibold">Work Experience:</span>
-                {profile.workExperience.length > 0 ? (
-                  <ul className="list-disc ml-6">
-                    {profile.workExperience.map((exp) => (
-                      <li key={exp.id}>
-                        {exp.title} at {exp.company} ({exp.startDate} - {exp.endDate})<br />
-                        <span className="text-muted-foreground">{exp.description}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <span className="text-muted-foreground ml-2">No work experience added.</span>
-                )}
-              </div>
-              <div>
-                <span className="font-semibold">Skills:</span> {profile.skills.length > 0 ? profile.skills.join(", ") : <span className="text-muted-foreground">No skills added.</span>}
-              </div>
-              <div>
-                <span className="font-semibold">Interests:</span> {profile.interests.length > 0 ? profile.interests.join(", ") : <span className="text-muted-foreground">No interests added.</span>}
-              </div>
+              <div><strong>Skills:</strong> {profile.skills.length ? profile.skills.join(", ") : <span className="text-muted-foreground">No skills added.</span>}</div>
+              <div><strong>Interests:</strong> {profile.interests.length ? profile.interests.join(", ") : <span className="text-muted-foreground">No interests added.</span>}</div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Edit Form Section */}
-        <Card className="backdrop-blur-sm bg-card/50 border-border/50 shadow-2xl dark:bg-gray-800/50 dark:border-gray-700/50">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold dark:text-white">Edit Profile</CardTitle>
-          </CardHeader>
+        {/* Edit Form */}
+        <Card>
+          <CardHeader><CardTitle>Edit Profile</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              
-              {/* Personal Information Section */}
+
+              {/* Personal Info */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center"><Briefcase className="mr-2 h-5 w-5 text-primary" /> Personal Information</h3>
+                <h3 className="flex items-center text-lg font-semibold"><Briefcase className="mr-2"/> Personal Info</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" name="firstName" value={profile.firstName} onChange={handleInputChange} />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" name="lastName" value={profile.lastName} onChange={handleInputChange} />
-                  </div>
+                  <div><Label>First Name</Label><Input name="firstName" value={profile.firstName} onChange={handleInputChange} /></div>
+                  <div><Label>Last Name</Label><Input name="lastName" value={profile.lastName} onChange={handleInputChange} /></div>
                 </div>
-                <div>
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea id="bio" name="bio" value={profile.bio} onChange={handleInputChange} rows={4} />
-                </div>
-              </div>
-              
-              {/* Education Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center"><GraduationCap className="mr-2 h-5 w-5 text-primary" /> Education</h3>
-                {profile.education.map((edu, index) => (
-                  <div key={edu.id} className="space-y-2 border p-4 rounded-md relative group">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeDynamicField(index, "education")}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <MinusCircle className="h-4 w-4" />
-                    </Button>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Institution</Label>
-                        <Input name="institution" value={edu.institution} onChange={(e) => handleDynamicChange(e, index, "education")} />
-                      </div>
-                      <div>
-                        <Label>Degree</Label>
-                        <Input name="degree" value={edu.degree} onChange={(e) => handleDynamicChange(e, index, "education")} />
-                      </div>
-                    </div>
-                    <div>
-                      <Label>Field of Study</Label>
-                      <Input name="fieldOfStudy" value={edu.fieldOfStudy} onChange={(e) => handleDynamicChange(e, index, "education")} />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Start Date</Label>
-                        <Input type="month" name="startDate" value={edu.startDate} onChange={(e) => handleDynamicChange(e, index, "education")} />
-                      </div>
-                      <div>
-                        <Label>End Date</Label>
-                        <Input type="month" name="endDate" value={edu.endDate} onChange={(e) => handleDynamicChange(e, index, "education")} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <Button type="button" variant="outline" onClick={() => addDynamicField("education")} className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Education
-                </Button>
+                <div><Label>Bio</Label><Textarea name="bio" value={profile.bio} onChange={handleInputChange} rows={3} /></div>
               </div>
 
-              {/* Work Experience Section */}
+              {/* Education */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center"><Briefcase className="mr-2 h-5 w-5 text-primary" /> Work Experience</h3>
-                {profile.workExperience.map((exp, index) => (
-                  <div key={exp.id} className="space-y-2 border p-4 rounded-md relative group">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeDynamicField(index, "workExperience")}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <MinusCircle className="h-4 w-4" />
+                <h3 className="flex items-center text-lg font-semibold"><GraduationCap className="mr-2"/> Education</h3>
+                {profile.education.map((edu, i) => (
+                  <div key={edu.id} className="border p-4 rounded-md relative group">
+                    <Button type="button" variant="destructive" size="sm"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
+                      onClick={() => removeDynamicField(i, "education")}>
+                      <MinusCircle className="w-4 h-4"/>
                     </Button>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Company</Label>
-                        <Input name="company" value={exp.company} onChange={(e) => handleDynamicChange(e, index, "workExperience")} />
-                      </div>
-                      <div>
-                        <Label>Job Title</Label>
-                        <Input name="title" value={exp.title} onChange={(e) => handleDynamicChange(e, index, "workExperience")} />
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <Input name="institution" value={edu.institution} onChange={e => handleDynamicChange(e, i, "education")} placeholder="Institution"/>
+                      <Input name="degree" value={edu.degree} onChange={e => handleDynamicChange(e, i, "education")} placeholder="Degree"/>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Start Date</Label>
-                        <Input type="month" name="startDate" value={exp.startDate} onChange={(e) => handleDynamicChange(e, index, "workExperience")} />
-                      </div>
-                      <div>
-                        <Label>End Date</Label>
-                        <Input type="month" name="endDate" value={exp.endDate} onChange={(e) => handleDynamicChange(e, index, "workExperience")} />
-                      </div>
-                    </div>
-                    <div>
-                      <Label>Description</Label>
-                      <Textarea name="description" value={exp.description} onChange={(e) => handleDynamicChange(e, index, "workExperience")} rows={3} />
+                    <Input name="fieldOfStudy" value={edu.fieldOfStudy} onChange={e => handleDynamicChange(e, i, "education")} placeholder="Field of Study"/>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input type="month" name="startDate" value={edu.startDate} onChange={e => handleDynamicChange(e, i, "education")}/>
+                      <Input type="month" name="endDate" value={edu.endDate} onChange={e => handleDynamicChange(e, i, "education")}/>
                     </div>
                   </div>
                 ))}
-                <Button type="button" variant="outline" onClick={() => addDynamicField("workExperience")} className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Work Experience
-                </Button>
+                <Button type="button" variant="outline" onClick={() => addDynamicField("education")} className="w-full"><PlusCircle className="mr-2"/> Add Education</Button>
               </div>
 
-              {/* Skills Section */}
+              {/* Work Experience */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center"><Code className="mr-2 h-5 w-5 text-primary" /> Skills</h3>
-                {profile.skills.map((skill, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <Input value={skill} onChange={(e) => handleArrayChange(e, index, "skills")} />
-                    <Button type="button" variant="outline" size="icon" onClick={() => removeArrayField(index, "skills")}>
-                      <MinusCircle className="h-4 w-4" />
+                <h3 className="flex items-center text-lg font-semibold"><Briefcase className="mr-2"/> Work Experience</h3>
+                {profile.workExperience.map((w, i) => (
+                  <div key={w.id} className="border p-4 rounded-md relative group">
+                    <Button type="button" variant="destructive" size="sm"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100"
+                      onClick={() => removeDynamicField(i, "workExperience")}>
+                      <MinusCircle className="w-4 h-4"/>
                     </Button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <Input name="company" value={w.company} onChange={e => handleDynamicChange(e, i, "workExperience")} placeholder="Company"/>
+                      <Input name="title" value={w.title} onChange={e => handleDynamicChange(e, i, "workExperience")} placeholder="Job Title"/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input type="month" name="startDate" value={w.startDate} onChange={e => handleDynamicChange(e, i, "workExperience")}/>
+                      <Input type="month" name="endDate" value={w.endDate} onChange={e => handleDynamicChange(e, i, "workExperience")}/>
+                    </div>
+                    <Textarea name="description" value={w.description} onChange={e => handleDynamicChange(e, i, "workExperience")} rows={3} placeholder="Description"/>
                   </div>
                 ))}
-                <Button type="button" variant="outline" onClick={() => addArrayField("skills")} className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Skill
-                </Button>
+                <Button type="button" variant="outline" onClick={() => addDynamicField("workExperience")} className="w-full"><PlusCircle className="mr-2"/> Add Work Experience</Button>
               </div>
 
-              {/* Interests Section */}
+              {/* Skills */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center"><Heart className="mr-2 h-5 w-5 text-primary" /> Interests</h3>
-                {profile.interests.map((interest, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <Input value={interest} onChange={(e) => handleArrayChange(e, index, "interests")} />
-                    <Button type="button" variant="outline" size="icon" onClick={() => removeArrayField(index, "interests")}>
-                      <MinusCircle className="h-4 w-4" />
-                    </Button>
+                <h3 className="flex items-center text-lg font-semibold"><Code className="mr-2"/> Skills</h3>
+                {profile.skills.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input value={s} onChange={e => handleArrayChange(e, i, "skills")}/>
+                    <Button type="button" size="icon" variant="outline" onClick={() => removeArrayField(i, "skills")}><MinusCircle className="w-4 h-4"/></Button>
                   </div>
                 ))}
-                <Button type="button" variant="outline" onClick={() => addArrayField("interests")} className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Interest
-                </Button>
+                <Button type="button" variant="outline" onClick={() => addArrayField("skills")} className="w-full"><PlusCircle className="mr-2"/> Add Skill</Button>
               </div>
-              
-              <Button type="submit" className="w-full btn-hero" disabled={saving}>
-                {saving ? "Saving..." : "Save Profile"}
-              </Button>
-              
+
+              {/* Interests */}
+              <div className="space-y-4">
+                <h3 className="flex items-center text-lg font-semibold"><Heart className="mr-2"/> Interests</h3>
+                {profile.interests.map((i, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input value={i} onChange={e => handleArrayChange(e, idx, "interests")}/>
+                    <Button type="button" size="icon" variant="outline" onClick={() => removeArrayField(idx, "interests")}><MinusCircle className="w-4 h-4"/></Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={() => addArrayField("interests")} className="w-full"><PlusCircle className="mr-2"/> Add Interest</Button>
+              </div>
+
+              <Button type="submit" className="w-full btn-hero" disabled={saving}>{saving ? "Saving..." : "Save Profile"}</Button>
             </form>
           </CardContent>
         </Card>

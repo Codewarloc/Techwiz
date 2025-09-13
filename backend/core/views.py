@@ -1,6 +1,8 @@
 from rest_framework import viewsets, permissions, status, generics, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+
 import uuid
 from django.utils import timezone
 from datetime import timedelta
@@ -22,9 +24,6 @@ from .serializers import (
     FeedbackSerializer, BookmarkSerializer, QuizResultSerializer
 )
 
-# -------------------------
-# User / Profile / CRUD Views
-# -------------------------
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('-created_at')
@@ -40,10 +39,26 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 
+class CareerViewSet(viewsets.ModelViewSet):
+    queryset = Career.objects.all()
+    serializer_class = CareerSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
 class ResourceViewSet(viewsets.ModelViewSet):
-    queryset = Resource.objects.all()
+    queryset = Resource.objects.all().order_by('-created_at')
     serializer_class = ResourceSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    @action(detail=True, methods=['post'])
+    def increment_download_count(self, request, pk=None):
+        """
+        Increments the download count of a resource.
+        """
+        resource = self.get_object()
+        resource.download_count += 1
+        resource.save()
+        return Response({'status': 'success', 'download_count': resource.download_count})
 
 
 class SuccessStoryViewSet(viewsets.ModelViewSet):
@@ -78,13 +93,18 @@ class SuccessStoryViewSet(viewsets.ModelViewSet):
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Ensure users can only access their own profile
+        return UserProfile.objects.filter(user=self.request.user)
 
-
-class CareerViewSet(viewsets.ModelViewSet):
-    queryset = Career.objects.all()
-    serializer_class = CareerSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        # Returns or creates profile for logged-in user
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data)
 
 
 class MultimediaViewSet(viewsets.ModelViewSet):
