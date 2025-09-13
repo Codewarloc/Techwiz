@@ -57,11 +57,18 @@ class Career(models.Model):
     career_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=255)
     description = models.TextField()
-    domain = models.CharField(max_length=100)
+    domain = models.CharField(max_length=100) # Corresponds to 'category'
     required_skills = models.JSONField(default=list, blank=True)
     education_path = models.TextField(blank=True)
-    expected_salary = models.CharField(max_length=100, blank=True)
+    expected_salary = models.CharField(max_length=100, blank=True) # Corresponds to 'salary'
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # New fields to match the frontend
+    company = models.CharField(max_length=255, blank=True)
+    demand = models.CharField(max_length=50, blank=True) # e.g., "High", "Very High"
+    growth = models.CharField(max_length=50, blank=True) # e.g., "+22%"
+    experience = models.CharField(max_length=50, blank=True) # e.g., "entry", "mid"
+    salary_range = models.CharField(max_length=50, blank=True) # e.g., "80-120k"
 
     def __str__(self):
         return self.title
@@ -125,11 +132,25 @@ class UserProfile(models.Model):
 # Multimedia
 # -----------------------
 class Multimedia(models.Model):
+    TYPE_CHOICES = [
+        ("Video", "Video"),
+        ("Podcast", "Podcast"),
+        ("Explainer", "Explainer"),
+    ]
+
     multimedia_id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    file = models.FileField(upload_to="multimedia/")
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="Video")
+    # URL for external content like YouTube
+    url = models.URLField(max_length=500, blank=True)
+    # File for self-hosted content
+    file = models.FileField(upload_to="multimedia/", blank=True, null=True)
+    transcript = models.TextField(blank=True)
+    tags = models.JSONField(default=list, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
 
 
 # -----------------------

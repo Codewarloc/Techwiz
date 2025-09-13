@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Play, FileText, Star, ThumbsUp, ThumbsDown, BarChart } from "lucide-react";
-// ✅ Make sure you already have this component
+import { Play, FileText, Star, ThumbsUp, ThumbsDown, BarChart, Loader2 } from "lucide-react";
+import api from "@/lib/api";
+import { toast } from "@/components/ui/use-toast";
 
-// Content type
+// Updated Content type to match backend model
 interface Content {
-  id: number;
+  multimedia_id: number;
   type: "Video" | "Podcast" | "Explainer";
   title: string;
   url: string;
@@ -15,43 +16,48 @@ interface Content {
   tags: string[];
 }
 
-const contentList: Content[] = [
-  {
-    id: 1,
-    type: "Video",
-    title: "Career Growth Strategies",
-    url: "https://www.youtube.com/embed/a6g8y3EDHkw",
-    transcript: "In this video, we explore key strategies for career growth...",
-    tags: ["Career", "Beginner"],
-  },
-  {
-    id: 2,
-    type: "Podcast",
-    title: "Tech Trends 2025",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    transcript: "Welcome to the podcast! Today we discuss upcoming tech trends...",
-    tags: ["Technology", "Intermediate"],
-  },
-  {
-    id: 3,
-    type: "Explainer",
-    title: "How AI is Changing Jobs",
-    url: "https://www.youtube.com/embed/2vjPBrBU-TM",
-    transcript: "AI is reshaping industries by automating tasks and creating new roles...",
-    tags: ["AI", "Advanced"],
-  },
-];
-
 const MultimediaHub = () => {
-  const [selectedContent, setSelectedContent] = useState<Content | null>(contentList[0]);
+  const [contentList, setContentList] = useState<Content[]>([]);
+  const [selectedContent, setSelectedContent] = useState<Content | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showTranscript, setShowTranscript] = useState(false);
   const [likes, setLikes] = useState(12);
   const [dislikes, setDislikes] = useState(2);
 
+  useEffect(() => {
+    const fetchMultimedia = async () => {
+      try {
+        const response = await api.get<Content[]>("/multimedia/");
+        setContentList(response.data);
+        if (response.data.length > 0) {
+          setSelectedContent(response.data[0]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch multimedia content:", error);
+        toast({
+          title: "Error",
+          description: "Could not load multimedia content.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMultimedia();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <p className="ml-4 text-lg">Loading Multimedia Hub...</p>
+      </div>
+    );
+  }
+
   return (
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden">
       {/* ✅ Navbar */}
-   
 
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
@@ -67,7 +73,7 @@ const MultimediaHub = () => {
           </CardHeader>
 
           <CardContent>
-            {selectedContent && (
+            {selectedContent ? (
               <div className="space-y-6">
                 {/* Title */}
                 <h2 className="text-2xl font-semibold">{selectedContent.title}</h2>
@@ -121,6 +127,8 @@ const MultimediaHub = () => {
                   </div>
                 </div>
               </div>
+            ) : (
+              <p>No multimedia content available.</p>
             )}
           </CardContent>
         </Card>
@@ -139,9 +147,9 @@ const MultimediaHub = () => {
           <CardContent className="grid gap-4 md:grid-cols-3">
             {contentList.map((content) => (
               <div
-                key={content.id}
+                key={content.multimedia_id}
                 className={`p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer ${
-                  selectedContent?.id === content.id ? "border-2 border-primary" : ""
+                  selectedContent?.multimedia_id === content.multimedia_id ? "border-2 border-primary" : ""
                 }`}
                 onClick={() => setSelectedContent(content)}
               >

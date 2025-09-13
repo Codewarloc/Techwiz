@@ -90,7 +90,8 @@ class CareerViewSet(viewsets.ModelViewSet):
 class MultimediaViewSet(viewsets.ModelViewSet):
     queryset = Multimedia.objects.all()
     serializer_class = MultimediaSerializer
-    permission_classes = [permissions.IsAdminUser]
+    # Allow public read access, but only admins can create/edit
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class QuizQuestionViewSet(viewsets.ModelViewSet):
