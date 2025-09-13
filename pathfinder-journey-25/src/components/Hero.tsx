@@ -249,15 +249,17 @@ export const Hero = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium">Feedback Type</label>
+                <label className="text-sm font-medium mb-1 block">
+                  Feedback Type
+                </label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 mt-1 text-sm"
+                  className="w-full border border-primary rounded-md px-3 py-2 mt-1 text-sm bg-primary/10 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value="bug">Bug</option>
-                  <option value="suggestion">Suggestion</option>
-                  <option value="query">Query</option>
+                  <option value="bug">🐞 Bug</option>
+                  <option value="suggestion">💡 Suggestion</option>
+                  <option value="query">❓ Query</option>
                 </select>
               </div>
 
