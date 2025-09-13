@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Code,
   Heart,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 
 // shadcn modal
@@ -26,14 +27,56 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+// shadcn calendar & popover
+import { format, parseISO } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+//
+// DatePicker component (uses shadcn Calendar inside a Popover)
+//
+interface DatePickerProps {
+  value: string;
+  onChange: (dateIso: string) => void;
+  placeholder?: string;
+}
+
+const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeholder }) => {
+  const date = value ? parseISO(value) : undefined;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={`w-full justify-start text-left font-normal ${!date ? "text-muted-foreground" : ""}`}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, "PPP") : placeholder || "Pick a date"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={(d) => d && onChange(d.toISOString().split("T")[0])}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+//
 // Types
+//
 interface Education {
   id: number;
   institution: string;
   degree: string;
   fieldOfStudy: string;
-  startDate: string;
-  endDate: string;
+  startDate: string; // ISO yyyy-mm-dd or empty
+  endDate: string; // ISO yyyy-mm-dd or empty / "Present"
 }
 
 interface WorkExperience {
@@ -56,6 +99,18 @@ interface ProfileData {
   id?: number;
 }
 
+const formatDate = (iso?: string) => {
+  if (!iso) return "";
+  try {
+    return format(parseISO(iso), "MMM yyyy");
+  } catch {
+    return iso;
+  }
+};
+
+//
+// Main component
+//
 const EditProfile: React.FC = () => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,48 +145,36 @@ const EditProfile: React.FC = () => {
     fetchProfile();
   }, []);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  // update top-level input fields (firstName, lastName, bio)
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     if (!profile) return;
     setProfile((prev) => (prev ? { ...prev, [name]: value } : prev));
   };
 
-  const handleDynamicChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  // helper to set a value for a dynamic item (education/workExperience)
+  const setDynamicFieldValue = (
     index: number,
-    field: "education" | "workExperience"
+    field: "education" | "workExperience",
+    name: string,
+    value: string
   ) => {
     if (!profile) return;
-    const { name, value } = e.target;
     const arr = [...profile[field]];
-    arr[index] = { ...arr[index], [name]: value };
+    arr[index] = { ...arr[index], [name]: value } as any;
     setProfile({ ...profile, [field]: arr });
   };
 
+  // add / remove dynamic blocks
   const addDynamicField = (field: "education" | "workExperience") => {
     if (!profile) return;
     const arr = [...profile[field]];
-    const newId = arr.length > 0 ? arr[arr.length - 1].id + 1 : 1;
-    if (field === "education")
-      arr.push({
-        id: newId,
-        institution: "",
-        degree: "",
-        fieldOfStudy: "",
-        startDate: "",
-        endDate: "",
-      });
-    else
-      arr.push({
-        id: newId,
-        company: "",
-        title: "",
-        startDate: "",
-        endDate: "",
-        description: "",
-      });
+    const newId = arr.length > 0 ? arr[arr.length - 1].id + 1 : Date.now();
+    if (field === "education") {
+      arr.push({ id: newId, institution: "", degree: "", fieldOfStudy: "", startDate: "", endDate: "" });
+    } else {
+      arr.push({ id: newId, company: "", title: "", startDate: "", endDate: "", description: "" });
+    }
     setProfile({ ...profile, [field]: arr });
   };
 
@@ -142,14 +185,11 @@ const EditProfile: React.FC = () => {
     setProfile({ ...profile, [field]: arr });
   };
 
-  const handleArrayChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    index: number,
-    field: "skills" | "interests"
-  ) => {
+  // arrays for skills/interests
+  const setArrayFieldValue = (index: number, field: "skills" | "interests", value: string) => {
     if (!profile) return;
     const arr = [...profile[field]];
-    arr[index] = e.target.value;
+    arr[index] = value;
     setProfile({ ...profile, [field]: arr });
   };
 
@@ -165,6 +205,7 @@ const EditProfile: React.FC = () => {
     setProfile({ ...profile, [field]: arr });
   };
 
+  // submit (persist)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
@@ -180,19 +221,15 @@ const EditProfile: React.FC = () => {
         interests: profile.interests,
       });
 
+      // merge returned data but keep first/last name that are handled elsewhere
       setProfile((prev) =>
-        prev
-          ? { ...prev, ...res.data, firstName: prev.firstName, lastName: prev.lastName }
-          : prev
+        prev ? { ...prev, ...res.data, firstName: prev.firstName, lastName: prev.lastName } : prev
       );
 
-      setShowModal(true); // ✅ show modal instead of alert
+      setShowModal(true);
     } catch (err: any) {
       console.error("Save error:", err.response?.data || err.message);
-      setError(
-        "Failed to save profile. " +
-          (err.response?.data ? JSON.stringify(err.response.data) : "")
-      );
+      setError("Failed to save profile. " + (err.response?.data ? JSON.stringify(err.response.data) : ""));
     } finally {
       setSaving(false);
     }
@@ -205,10 +242,7 @@ const EditProfile: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-3xl">
-        <Link
-          to="/dashboard"
-          className="flex items-center text-muted-foreground hover:text-foreground mb-6"
-        >
+        <Link to="/dashboard" className="flex items-center text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft className="mr-2 w-4 h-4" /> Back to Dashboard
         </Link>
 
@@ -217,64 +251,80 @@ const EditProfile: React.FC = () => {
           <CardHeader>
             <CardTitle>Profile Overview</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div>
-                <strong>Name:</strong> {profile.firstName} {profile.lastName}
-              </div>
-              <div>
-                <strong>Bio:</strong>{" "}
-                {profile.bio || <span className="text-muted-foreground">No bio yet.</span>}
-              </div>
-              <div>
-                <strong>Education:</strong>
-                {profile.education.length ? (
-                  <ul className="ml-4 list-disc">
-                    {profile.education.map((e) => (
-                      <li key={e.id}>
-                        {e.degree} in {e.fieldOfStudy} at {e.institution} ({e.startDate} -{" "}
-                        {e.endDate})
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <span className="text-muted-foreground ml-2">No education added.</span>
-                )}
-              </div>
-              <div>
-                <strong>Work Experience:</strong>
-                {profile.workExperience.length ? (
-                  <ul className="ml-4 list-disc">
-                    {profile.workExperience.map((w) => (
-                      <li key={w.id}>
-                        {w.title} at {w.company} ({w.startDate} - {w.endDate})
-                        <br />
-                        <span className="text-muted-foreground">{w.description}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <span className="text-muted-foreground ml-2">
-                    No work experience added.
-                  </span>
-                )}
-              </div>
-              <div>
-                <strong>Skills:</strong>{" "}
-                {profile.skills.length ? (
-                  profile.skills.join(", ")
-                ) : (
-                  <span className="text-muted-foreground">No skills added.</span>
-                )}
-              </div>
-              <div>
-                <strong>Interests:</strong>{" "}
-                {profile.interests.length ? (
-                  profile.interests.join(", ")
-                ) : (
-                  <span className="text-muted-foreground">No interests added.</span>
-                )}
-              </div>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="font-semibold">Name</h3>
+              <p>
+                {profile.firstName} {profile.lastName}
+              </p>
+            </div>
+
+            <div>
+              <h3 className="font-semibold">Bio</h3>
+              <p>{profile.bio || "No bio added yet."}</p>
+            </div>
+
+            <div>
+              <h3 className="font-semibold">Education</h3>
+              {profile.education.length > 0 ? (
+                <ul className="list-disc list-inside space-y-1">
+                  {profile.education.map((edu) => (
+                    <li key={edu.id}>
+                      {edu.degree} in {edu.fieldOfStudy} at {edu.institution} (
+                      {formatDate(edu.startDate) || "—"} – {edu.endDate ? formatDate(edu.endDate) : "Present"})
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No education details yet.</p>
+              )}
+            </div>
+
+            <div>
+              <h3 className="font-semibold">Work Experience</h3>
+              {profile.workExperience.length > 0 ? (
+                <ul className="list-disc list-inside space-y-1">
+                  {profile.workExperience.map((w) => (
+                    <li key={w.id}>
+                      {w.title} at {w.company} ({formatDate(w.startDate) || "—"} – {w.endDate ? formatDate(w.endDate) : "Present"})
+                      <br />
+                      <span className="text-muted-foreground text-sm">{w.description}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No work experience yet.</p>
+              )}
+            </div>
+
+            <div>
+              <h3 className="font-semibold">Skills</h3>
+              {profile.skills.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {profile.skills.map((s, i) => (
+                    <span key={i} className="px-2 py-1 bg-primary/10 rounded-md text-sm">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p>No skills listed yet.</p>
+              )}
+            </div>
+
+            <div>
+              <h3 className="font-semibold">Interests</h3>
+              {profile.interests.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {profile.interests.map((i, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-secondary/10 rounded-md text-sm">
+                      {i}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p>No interests listed yet.</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -294,29 +344,16 @@ const EditProfile: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>First Name</Label>
-                    <Input
-                      name="firstName"
-                      value={profile.firstName}
-                      onChange={handleInputChange}
-                    />
+                    <Input name="firstName" value={profile.firstName} onChange={handleInputChange} />
                   </div>
                   <div>
                     <Label>Last Name</Label>
-                    <Input
-                      name="lastName"
-                      value={profile.lastName}
-                      onChange={handleInputChange}
-                    />
+                    <Input name="lastName" value={profile.lastName} onChange={handleInputChange} />
                   </div>
                 </div>
                 <div>
                   <Label>Bio</Label>
-                  <Textarea
-                    name="bio"
-                    value={profile.bio}
-                    onChange={handleInputChange}
-                    rows={3}
-                  />
+                  <Textarea name="bio" value={profile.bio} onChange={handleInputChange} rows={3} />
                 </div>
               </div>
 
@@ -336,48 +373,44 @@ const EditProfile: React.FC = () => {
                     >
                       <MinusCircle className="w-4 h-4" />
                     </Button>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       <Input
                         name="institution"
                         value={edu.institution}
-                        onChange={(e) => handleDynamicChange(e, i, "education")}
+                        onChange={(e) => setDynamicFieldValue(i, "education", "institution", e.target.value)}
                         placeholder="Institution"
                       />
                       <Input
                         name="degree"
                         value={edu.degree}
-                        onChange={(e) => handleDynamicChange(e, i, "education")}
+                        onChange={(e) => setDynamicFieldValue(i, "education", "degree", e.target.value)}
                         placeholder="Degree"
                       />
                     </div>
+
                     <Input
                       name="fieldOfStudy"
                       value={edu.fieldOfStudy}
-                      onChange={(e) => handleDynamicChange(e, i, "education")}
+                      onChange={(e) => setDynamicFieldValue(i, "education", "fieldOfStudy", e.target.value)}
                       placeholder="Field of Study"
                     />
+
                     <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        type="month"
-                        name="startDate"
+                      <DatePicker
                         value={edu.startDate}
-                        onChange={(e) => handleDynamicChange(e, i, "education")}
+                        onChange={(val) => setDynamicFieldValue(i, "education", "startDate", val)}
+                        placeholder="Start Date"
                       />
-                      <Input
-                        type="month"
-                        name="endDate"
+                      <DatePicker
                         value={edu.endDate}
-                        onChange={(e) => handleDynamicChange(e, i, "education")}
+                        onChange={(val) => setDynamicFieldValue(i, "education", "endDate", val)}
+                        placeholder="End Date"
                       />
                     </div>
                   </div>
                 ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => addDynamicField("education")}
-                  className="w-full"
-                >
+                <Button type="button" variant="outline" onClick={() => addDynamicField("education")} className="w-full">
                   <PlusCircle className="mr-2" /> Add Education
                 </Button>
               </div>
@@ -398,49 +431,45 @@ const EditProfile: React.FC = () => {
                     >
                       <MinusCircle className="w-4 h-4" />
                     </Button>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       <Input
                         name="company"
                         value={w.company}
-                        onChange={(e) => handleDynamicChange(e, i, "workExperience")}
+                        onChange={(e) => setDynamicFieldValue(i, "workExperience", "company", e.target.value)}
                         placeholder="Company"
                       />
                       <Input
                         name="title"
                         value={w.title}
-                        onChange={(e) => handleDynamicChange(e, i, "workExperience")}
+                        onChange={(e) => setDynamicFieldValue(i, "workExperience", "title", e.target.value)}
                         placeholder="Job Title"
                       />
                     </div>
+
                     <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        type="month"
-                        name="startDate"
+                      <DatePicker
                         value={w.startDate}
-                        onChange={(e) => handleDynamicChange(e, i, "workExperience")}
+                        onChange={(val) => setDynamicFieldValue(i, "workExperience", "startDate", val)}
+                        placeholder="Start Date"
                       />
-                      <Input
-                        type="month"
-                        name="endDate"
+                      <DatePicker
                         value={w.endDate}
-                        onChange={(e) => handleDynamicChange(e, i, "workExperience")}
+                        onChange={(val) => setDynamicFieldValue(i, "workExperience", "endDate", val)}
+                        placeholder="End Date"
                       />
                     </div>
+
                     <Textarea
                       name="description"
                       value={w.description}
-                      onChange={(e) => handleDynamicChange(e, i, "workExperience")}
+                      onChange={(e) => setDynamicFieldValue(i, "workExperience", "description", e.target.value)}
                       rows={3}
                       placeholder="Description"
                     />
                   </div>
                 ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => addDynamicField("workExperience")}
-                  className="w-full"
-                >
+                <Button type="button" variant="outline" onClick={() => addDynamicField("workExperience")} className="w-full">
                   <PlusCircle className="mr-2" /> Add Work Experience
                 </Button>
               </div>
@@ -454,24 +483,14 @@ const EditProfile: React.FC = () => {
                   <div key={i} className="flex items-center gap-2">
                     <Input
                       value={s}
-                      onChange={(e) => handleArrayChange(e, i, "skills")}
+                      onChange={(e) => setArrayFieldValue(i, "skills", e.target.value)}
                     />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      onClick={() => removeArrayField(i, "skills")}
-                    >
+                    <Button type="button" size="icon" variant="outline" onClick={() => removeArrayField(i, "skills")}>
                       <MinusCircle className="w-4 h-4" />
                     </Button>
                   </div>
                 ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => addArrayField("skills")}
-                  className="w-full"
-                >
+                <Button type="button" variant="outline" onClick={() => addArrayField("skills")} className="w-full">
                   <PlusCircle className="mr-2" /> Add Skill
                 </Button>
               </div>
@@ -483,26 +502,13 @@ const EditProfile: React.FC = () => {
                 </h3>
                 {profile.interests.map((i, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <Input
-                      value={i}
-                      onChange={(e) => handleArrayChange(e, idx, "interests")}
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      onClick={() => removeArrayField(idx, "interests")}
-                    >
+                    <Input value={i} onChange={(e) => setArrayFieldValue(idx, "interests", e.target.value)} />
+                    <Button type="button" size="icon" variant="outline" onClick={() => removeArrayField(idx, "interests")}>
                       <MinusCircle className="w-4 h-4" />
                     </Button>
                   </div>
                 ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => addArrayField("interests")}
-                  className="w-full"
-                >
+                <Button type="button" variant="outline" onClick={() => addArrayField("interests")} className="w-full">
                   <PlusCircle className="mr-2" /> Add Interest
                 </Button>
               </div>
@@ -515,14 +521,12 @@ const EditProfile: React.FC = () => {
         </Card>
       </div>
 
-      {/* ✅ Success Modal */}
+      {/* Success Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Profile Updated</DialogTitle>
-            <DialogDescription>
-              Your profile has been successfully saved.
-            </DialogDescription>
+            <DialogDescription>Your profile has been successfully saved.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowModal(false)}>Close</Button>

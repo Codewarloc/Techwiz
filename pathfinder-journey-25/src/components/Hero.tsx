@@ -15,6 +15,13 @@ import {
 import { Link } from "react-router-dom";
 import api from "@/lib/api";
 import { toast } from "@/components/ui/sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Hero = () => {
   const [feedback, setFeedback] = useState("");
@@ -252,15 +259,16 @@ export const Hero = () => {
                 <label className="text-sm font-medium mb-1 block">
                   Feedback Type
                 </label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full border border-primary rounded-md px-3 py-2 mt-1 text-sm bg-primary/10 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="bug">🐞 Bug</option>
-                  <option value="suggestion">💡 Suggestion</option>
-                  <option value="query">❓ Query</option>
-                </select>
+                <Select value={type} onValueChange={setType}>
+                  <SelectTrigger className="w-full border border-primary rounded-md px-3 py-2 mt-1 text-sm bg-primary/10 text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                    <SelectValue placeholder="Choose feedback type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bug">🐞 Bug</SelectItem>
+                    <SelectItem value="suggestion">💡 Suggestion</SelectItem>
+                    <SelectItem value="query">❓ Query</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
