@@ -232,16 +232,20 @@ class Feedback(models.Model):
 # -----------------------
 class Bookmark(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    career = models.ForeignKey(Career, on_delete=models.CASCADE)
+    career = models.ForeignKey(Career, on_delete=models.CASCADE, null=True, blank=True)
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, null=True, blank=True)
+    multimedia = models.ForeignKey(Multimedia, on_delete=models.CASCADE, null=True, blank=True)
+    note = models.TextField(blank=True)  # Sticky note or comment
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "career")
+        unique_together = ("user", "career", "resource", "multimedia")
 
 
-# -----------------------
-# Signals
-# -----------------------
+        
+    def __str__(self):
+        return f"Bookmark by {self.user.email}"
+
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:

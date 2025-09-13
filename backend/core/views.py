@@ -2,15 +2,21 @@ from rest_framework import viewsets, permissions, status, generics, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-
+from io import BytesIO
+from django.http import HttpResponse
 import uuid
 from django.utils import timezone
 from datetime import timedelta
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 from django.db.models import Count
+
+# PDF export
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 
 from .models import (
     User, Career, Resource, SuccessStory, UserProfile,
@@ -24,6 +30,10 @@ from .serializers import (
     FeedbackSerializer, BookmarkSerializer, QuizResultSerializer
 )
 
+
+# -------------------------
+# User Views
+# -------------------------
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('-created_at')
@@ -39,11 +49,19 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 
+# -------------------------
+# Career Views
+# -------------------------
+
 class CareerViewSet(viewsets.ModelViewSet):
     queryset = Career.objects.all()
     serializer_class = CareerSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
+
+# -------------------------
+# Resource Views
+# -------------------------
 
 class ResourceViewSet(viewsets.ModelViewSet):
     queryset = Resource.objects.all().order_by('-created_at')
@@ -52,43 +70,38 @@ class ResourceViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def increment_download_count(self, request, pk=None):
-        """
-        Increments the download count of a resource.
-        """
         resource = self.get_object()
         resource.download_count += 1
         resource.save()
         return Response({'status': 'success', 'download_count': resource.download_count})
 
 
+# -------------------------
+# Success Story Views
+# -------------------------
+
 class SuccessStoryViewSet(viewsets.ModelViewSet):
     serializer_class = SuccessStorySerializer
     
     def get_queryset(self):
-        """
-        This view should return a list of all approved success stories
-        for any user, but admins can see all stories.
-        """
         if self.request.user.is_staff:
             return SuccessStory.objects.all().order_by('-created_at')
         return SuccessStory.objects.filter(is_approved=True).order_by('-created_at')
 
     def get_permissions(self):
-        """
-        Allow any user to view stories, but only authenticated users to create them.
-        """
-        if self.action == 'list' or self.action == 'retrieve':
+        if self.action in ['list', 'retrieve']:
             self.permission_classes = [permissions.AllowAny]
         else:
             self.permission_classes = [permissions.IsAuthenticated]
         return super().get_permissions()
 
     def perform_create(self, serializer):
-        """
-        Associate the logged-in user with the new story.
-        """
         serializer.save(user=self.request.user)
 
+
+# -------------------------
+# User Profile Views
+# -------------------------
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
@@ -96,23 +109,28 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        # Ensure users can only access their own profile
         return UserProfile.objects.filter(user=self.request.user)
 
     @action(detail=False, methods=['get'])
     def me(self, request):
-        # Returns or creates profile for logged-in user
         profile, created = UserProfile.objects.get_or_create(user=request.user)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
 
 
+# -------------------------
+# Multimedia Views
+# -------------------------
+
 class MultimediaViewSet(viewsets.ModelViewSet):
     queryset = Multimedia.objects.all()
     serializer_class = MultimediaSerializer
-    # Allow public read access, but only admins can create/edit
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
+
+# -------------------------
+# Quiz Views
+# -------------------------
 
 class QuizQuestionViewSet(viewsets.ModelViewSet):
     queryset = QuizQuestion.objects.all()
@@ -137,24 +155,64 @@ class QuizResultViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+# -------------------------
+# Feedback Views
+# -------------------------
+
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all()
     serializer_class = FeedbackSerializer
     permission_classes = [permissions.AllowAny]
 
     def perform_create(self, serializer):
-       user = self.request.user if self.request.user.is_authenticated else None
-       serializer.save(user=user)
-
-
-class BookmarkViewSet(viewsets.ModelViewSet):
-    queryset = Bookmark.objects.all()
-    serializer_class = BookmarkSerializer
-    permission_classes = [permissions.IsAuthenticated]
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(user=user)
 
 
 # -------------------------
-# Current Authenticated User
+# Bookmark Views
+# -------------------------
+
+class BookmarkViewSet(viewsets.ModelViewSet):
+    queryset = Bookmark.objects.all() 
+    serializer_class = BookmarkSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Bookmark.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=["get"])
+    def export_pdf(self, request):
+        bookmarks = Bookmark.objects.filter(user=request.user)
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer)
+        styles = getSampleStyleSheet()
+        story = []
+
+        story.append(Paragraph("My Bookmarks & Notes", styles["Title"]))
+        story.append(Spacer(1, 20))
+
+        for bm in bookmarks:
+            item = bm.career or bm.resource or bm.multimedia
+            text = f"<b>{item}</b><br/>{bm.note or ''}"
+            story.append(Paragraph(text, styles["Normal"]))
+            story.append(Spacer(1, 12))
+
+        doc.build(story)
+        buffer.seek(0)
+        return HttpResponse(
+            buffer,
+            as_attachment=True,
+            content_type="application/pdf",
+            headers={"Content-Disposition": 'attachment; filename="bookmarks.pdf"'},
+        )
+
+
+# -------------------------
+# Current User API
 # -------------------------
 
 @api_view(['GET'])
@@ -184,10 +242,7 @@ class PasswordResetRequestView(generics.GenericAPIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response(
-                {"detail": "User with this email does not exist."},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"detail": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
         PasswordResetToken.objects.filter(user=user).delete()
 
@@ -219,18 +274,12 @@ class PasswordResetConfirmView(generics.GenericAPIView):
         password = request.data.get('password')
 
         if not token or not password:
-            return Response(
-                {"detail": "Token and password are required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "Token and password are required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             reset_token = PasswordResetToken.objects.get(token=token)
         except PasswordResetToken.DoesNotExist:
-            return Response(
-                {"detail": "Invalid or expired token."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
 
         if reset_token.expires_at < timezone.now():
             reset_token.delete()
@@ -251,21 +300,43 @@ class PasswordResetConfirmView(generics.GenericAPIView):
 @staff_member_required
 def dashboard_view(request):
     thirty_days_ago = timezone.now() - timedelta(days=30)
-    active_user_ids = QuizResult.objects.filter(submitted_at__gte=thirty_days_ago).values_list('user_id', flat=True)
-    recent_users = User.objects.filter(created_at__gte=thirty_days_ago).values_list('user_id', flat=True)
+
+    active_user_ids = QuizResult.objects.filter(submitted_at__gte=thirty_days_ago).values_list("user_id", flat=True)
+    recent_users = User.objects.filter(created_at__gte=thirty_days_ago).values_list("id", flat=True)
     active_users_count = User.objects.filter(pk__in=set(list(active_user_ids) + list(recent_users))).count()
 
     quiz_attempts_count = QuizResult.objects.count()
-    popular_categories = QuizResult.objects.values('best_category').annotate(count=Count('best_category')).order_by('-count')[:5]
-    popular_careers = Bookmark.objects.values('career__title').annotate(count=Count('career')).order_by('-count')[:5]
+    popular_categories = (
+        QuizResult.objects.values("best_category")
+        .annotate(count=Count("best_category"))
+        .order_by("-count")[:5]
+    )
+
+    popular_careers = (
+        Bookmark.objects.values("career__title")
+        .annotate(count=Count("career"))
+        .order_by("-count")[:5]
+    )
+    popular_resources = (
+        Bookmark.objects.values("resource__title")
+        .annotate(count=Count("resource"))
+        .order_by("-count")[:5]
+    )
+    popular_multimedia = (
+        Bookmark.objects.values("multimedia__title")
+        .annotate(count=Count("multimedia"))
+        .order_by("-count")[:5]
+    )
 
     context = {
         **admin.site.each_context(request),
-        'active_users_count': active_users_count,
-        'quiz_attempts_count': quiz_attempts_count,
-        'popular_categories': popular_categories,
-        'popular_careers': popular_careers,
-        'title': 'Dashboard'
+        "active_users_count": active_users_count,
+        "quiz_attempts_count": quiz_attempts_count,
+        "popular_categories": popular_categories,
+        "popular_careers": popular_careers,
+        "popular_resources": popular_resources,
+        "popular_multimedia": popular_multimedia,
+        "title": "Dashboard",
     }
 
     return render(request, "admin/dashboard.html", context)

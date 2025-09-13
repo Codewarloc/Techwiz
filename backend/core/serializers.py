@@ -47,24 +47,27 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 # UserProfile Serializer
+from rest_framework import serializers
+
 class UserProfileSerializer(serializers.ModelSerializer):
+    # ensure these custom fields exist and default to empty lists when absent
     education = serializers.JSONField(required=False, default=list)
     work_experience = serializers.JSONField(required=False, default=list)
     skills = serializers.ListField(child=serializers.CharField(), required=False, default=list)
     interests = serializers.ListField(child=serializers.CharField(), required=False, default=list)
 
+    # expose a stable "id" for the frontend even if the model's PK uses a different name
+    id = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = UserProfile
-        fields = [
-            "id",
-            "user",
-            "bio",
-            "education",
-            "work_experience",
-            "skills",
-            "interests",
-        ]
-        read_only_fields = ["id", "user"]
+        fields = "__all__"  # include all real model fields (avoids listing non-existent ones)
+        # make actual PK read-only (works regardless of PK name), plus user read-only
+        read_only_fields = [UserProfile._meta.pk.name, "user"]
+
+    def get_id(self, obj):
+        # return the real PK value (works even if the PK is named profile_id)
+        return getattr(obj, obj._meta.pk.name)
 
 
 # Career Serializer
@@ -109,3 +112,4 @@ class BookmarkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bookmark
         fields = "__all__"
+        read_only_fields = ["user", "created_at"]

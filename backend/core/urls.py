@@ -27,7 +27,7 @@ router.register(r"profiles", UserProfileViewSet)
 router.register(r"multimedia", MultimediaViewSet)
 router.register(r"questions", QuizQuestionViewSet)
 router.register(r"feedback", FeedbackViewSet)
-router.register(r"bookmarks", BookmarkViewSet)
+router.register(r"bookmarks", BookmarkViewSet, basename="bookmark")
 router.register(r"quizresults", QuizResultViewSet)
 router.register(r"successstories", SuccessStoryViewSet, basename='successstory')
 
