@@ -132,10 +132,17 @@ class SuccessStory(models.Model):
 # -----------------------
 # User Profiles
 # -----------------------
+from django.db import models
+# ... existing imports
+
 class UserProfile(models.Model):
     profile_id = models.BigAutoField(primary_key=True)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     education_level = models.CharField(max_length=200, blank=True)
+    bio = models.TextField(blank=True, default="")
+    education = models.JSONField(default=list, blank=True)          
+    work_experience = models.JSONField(default=list, blank=True)    
+
     interests = models.JSONField(default=list, blank=True)
     skills = models.JSONField(default=list, blank=True)
     profile_image = models.ImageField(upload_to="profiles/", blank=True, null=True)
@@ -144,6 +151,7 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"Profile: {self.user.uname}"
+
 
 
 # -----------------------

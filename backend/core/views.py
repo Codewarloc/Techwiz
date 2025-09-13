@@ -103,19 +103,29 @@ class SuccessStoryViewSet(viewsets.ModelViewSet):
 # User Profile Views
 # -------------------------
 
+
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
+        # allow only user's profiles
         return UserProfile.objects.filter(user=self.request.user)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
     def me(self, request):
         profile, created = UserProfile.objects.get_or_create(user=request.user)
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
+
+        if request.method == "GET":
+            serializer = self.get_serializer(profile)
+            return Response(serializer.data)
+
+        # PATCH: partial update
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # -------------------------
@@ -215,12 +225,47 @@ class BookmarkViewSet(viewsets.ModelViewSet):
 # Current User API
 # -------------------------
 
-@api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
-def current_user(request):
-    serializer = UserSerializer(request.user)
-    return Response(serializer.data)
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import UserSerializer
 
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def current_user(request):
+    """
+    GET: return current user
+    PATCH: allow partial update of simple fields (first_name, last_name)
+    """
+    if request.method == 'GET':
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    # PATCH
+    data = request.data
+    user = request.user
+    changed = False
+
+    # Only allow these simple fields in this quick patch
+    if 'first_name' in data:
+        user.first_name = data['first_name']
+        changed = True
+    if 'last_name' in data:
+        user.last_name = data['last_name']
+        changed = True
+
+    # If password update is needed, handle separately and securely:
+    # if 'password' in data:
+    #     user.set_password(data['password'])
+    #     changed = True
+
+    if changed:
+        user.save()
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+    else:
+        return Response({"detail": "No updatable fields provided."}, status=status.HTTP_400_BAD_REQUEST)
 
 # -------------------------
 # Password Reset

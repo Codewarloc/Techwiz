@@ -13,6 +13,29 @@ i used this to create my project
 - django
 
 
+Prequisites 
+Python 3.10+ 
+
+Node/npm 
+go to the backend directory
+
+\Techwiz\backend>
+once youre in the directory , create your virtual environment
+install the virtual environment
+
+'pip install virtualenv venv '
+then activate the environment:
+'venv\Scripts\activate'
+
+install the dependencies 
+'pip install -r requirements.txt'
+
+after succesfully installing the dependencies,run the server
+
+py manage.py runserver
+
+python 
+
 
 PathSeeker – Career Passport 🎓🌍
 

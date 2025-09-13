@@ -139,23 +139,30 @@ const EditProfile: React.FC = () => {
     setSaving(true);
     setError(null);
 
-    try {
-      await api.patch("auth/me/", { first_name: profile.firstName, last_name: profile.lastName });
-      await api.patch(`profiles/${profile.id}/`, {
-        bio: profile.bio,
-        education: profile.education,
-        work_experience: profile.workExperience,
-        skills: profile.skills,
-        interests: profile.interests,
-      });
-      alert("Profile saved successfully!");
-    } catch (err) {
-      console.error(err);
-      setError("Failed to save profile.");
-    } finally {
-      setSaving(false);
-    }
-  };
+     try {
+    // Update user names if you want (optional) — see note below.
+    // await api.patch("auth/me/", { first_name: profile.firstName, last_name: profile.lastName });
+
+    // Patch profile via profiles/me/
+    const res = await api.patch("profiles/me/", {
+      bio: profile.bio,
+      education: profile.education,
+      work_experience: profile.workExperience,
+      skills: profile.skills,
+      interests: profile.interests,
+    });
+
+    // update local state with returned data (keeps UI in sync)
+    setProfile(prev => prev ? { ...prev, ...res.data, firstName: prev.firstName, lastName: prev.lastName } : prev);
+
+    alert("Profile saved successfully!");
+  } catch (err: any) {
+    console.error("Save error:", err.response?.data || err.message);
+    setError("Failed to save profile. " + (err.response?.data ? JSON.stringify(err.response.data) : ""));
+  } finally {
+    setSaving(false);
+  }
+};
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
